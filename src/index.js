@@ -1,6 +1,6 @@
 const commander = require("commander");
 const chalk = require("chalk");
-const Delimited = require("./delimited");
+const Delimited = require("./delimited.js");
 
 commander
   .version("v0.0.1")
@@ -16,11 +16,13 @@ if (commander.demo) console.log(`This is a DEMO.`);
 const delimited = new Delimited(/\n\n(?=#)/g);
 //let stream = process.stdin;
 const fs = require("fs");
-
 let stream = fs.createReadStream(".gitignore", "utf8");
 let array = [];
 
-delimited.on("data", chunk => array.push(chunk));
+delimited.on("data", chunk => {
+  console.log(chunk);
+  return array.push(chunk);
+});
 delimited.on("end", () => console.log(array));
 
 stream.pipe(delimited);

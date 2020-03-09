@@ -40,3 +40,5 @@ class Delimited extends Transform {
     callback(null, this._buffer);
   }
 }
+
+module.exports = Delimited;
