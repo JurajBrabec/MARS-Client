@@ -14,3 +14,6 @@ if (commander.demo) console.log(`This is a DEMO.`);
 
 //git config --global user.name "Juraj Brabec"
 //git config --global user.email juraj@brabec.sk
+
+//"terminal.integrated.shell.windows": "cmd.exe",
+//"terminal.integrated.env.windows": {"path": "P:/PortableApps/NodeJSPortable/App;P:/PortableApps/GitPortable/App/Git/bin"},
