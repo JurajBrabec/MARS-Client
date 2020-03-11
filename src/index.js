@@ -1,6 +1,6 @@
 const commander = require("commander");
 const chalk = require("chalk");
-const Delimited = require("./delimited.js");
+const BpdbjobsSummary = require("./bpdbjobs.js");
 
 commander
   .version("v0.0.1")
@@ -9,23 +9,24 @@ commander
   .option("demo", "To output demo")
   .parse(process.argv);
 
-console.log(chalk.red("TEST"));
+console.log(chalk.red("TEST " + process.version));
 if (commander.aname) console.log(`Your name is ${commander.aname}.`);
 if (commander.demo) console.log(`This is a DEMO.`);
 
-const delimited = new Delimited(/\n\n(?=#)/g);
+const bpdbjobsSummary = new BpdbjobsSummary(
+  "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
+);
+bpdbjobsSummary.execute(bpdbjobsSummary.finish);
+
+console.log(
+  "Continuing to do node things while the process runs at the same time..."
+);
+
 //let stream = process.stdin;
-const fs = require("fs");
-let stream = fs.createReadStream(".gitignore", "utf8");
-let array = [];
-
-delimited.on("data", chunk => {
-  console.log(chunk);
-  return array.push(chunk);
-});
-delimited.on("end", () => console.log(array));
-
-stream.pipe(delimited);
+//const fs = require("fs");
+//let stream = fs.createReadStream(".gitignore", "utf8");
+//let array = [];
+//stream.pipe(delimited);
 
 //git config --global user.name "Juraj Brabec"
 //git config --global user.email juraj@brabec.sk
