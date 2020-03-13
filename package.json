@@ -4,7 +4,8 @@
   "description": "MARS client",
   "main": "src/index.js",
   "scripts": {
-    "test": "node src/index.js"
+    "test": "node src/index.js",
+    "debug": "node --inspect-brk src/index.js"
   },
   "author": "Juraj Brabec",
   "license": "ISC",

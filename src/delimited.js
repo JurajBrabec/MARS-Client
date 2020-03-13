@@ -1,10 +1,44 @@
 const { Transform } = require("stream");
 
-class Delimited extends Transform {
+class Item {
+  fields = {};
+  constructor(fields) {
+    this.fields = fields;
+  }
+  parse = () => this.fields;
+}
+
+class LabeledItem extends Item {
+  parse = text => {
+    let item = {};
+    this.fields.map(field => {
+      let match = field.pattern.exec(text);
+      item[field.name] = field.value === undefined ? match[1] : field.value;
+    });
+    return item;
+  };
+}
+
+class DelimitedItem extends Item {
+  delimiter = ",";
+  constructor(fields, delimiter = ",") {
+    super(fields);
+    this.delimiter = delimiter;
+  }
+  parse = text => {
+    let item = {};
+    let match = text.split(this.delimiter);
+    this.fields.map((field, index) => {
+      item[field.name] =
+        field.value === undefined ? match[index - 1] : field.value;
+    });
+    return item;
+  };
+}
+
+class DelimitedStream extends Transform {
   constructor(delimiter = /\r?\n/g) {
     super({ objectMode: true });
-
-    // initialize internal values
     this._delimiter =
       delimiter instanceof RegExp ? delimiter : new RegExp(delimiter, "g");
     this._encoding = "utf8";
@@ -13,8 +47,6 @@ class Delimited extends Transform {
   }
 
   _transform(chunk, encoding, callback) {
-    // convert input encoding into output encoding
-    // and append to internal buffer
     if (encoding === "buffer") {
       this._buffer += chunk.toString(this._encoding);
     } else if (encoding === this._encoding) {
@@ -22,23 +54,17 @@ class Delimited extends Transform {
     } else {
       this._buffer += Buffer.from(chunk, encoding).toString(this._encoding);
     }
-
     if (this._delimiter.test(this._buffer)) {
-      // split internal buffer by delimiter
       let sections = this._buffer.split(this._delimiter);
-      // put possibly incomplete section from array back into internal buffer
       this._buffer = sections.pop();
-      // push each section to readable stream in object mode
       sections.forEach(this.push, this);
     }
-
     callback();
   }
 
   _flush(callback) {
-    // push remaining buffer to readable stream
     callback(null, this._buffer);
   }
 }
 
-module.exports = Delimited;
+module.exports = { DelimitedStream, LabeledItem, DelimitedItem };

@@ -1,22 +1,30 @@
 const commander = require("commander");
 const chalk = require("chalk");
-const BpdbjobsSummary = require("./bpdbjobs.js");
+const { BpdbjobsSummary, BpdbjobsReportMostColumns } = require("./bpdbjobs.js");
 
 commander
   .version("v0.0.1")
   .description("This is a dummy demo CLI.")
+  .option("-d, --debug", "Debug mode")
   .option("-n, --aname <type>", "To input a name")
   .option("demo", "To output demo")
   .parse(process.argv);
 
 console.log(chalk.red("TEST " + process.version));
 if (commander.aname) console.log(`Your name is ${commander.aname}.`);
-if (commander.demo) console.log(`This is a DEMO.`);
+if (commander.debug) console.log(`Debug mode.`);
 
 const bpdbjobsSummary = new BpdbjobsSummary(
   "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
 );
-bpdbjobsSummary.execute(bpdbjobsSummary.finish);
+//bpdbjobsSummary.onFinish=func;
+bpdbjobsSummary.execute(() => {
+  const bpdbjobsReportMostColumns = new BpdbjobsReportMostColumns(
+    "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
+  );
+  bpdbjobsReportMostColumns.masterServer = bpdbjobsSummary.masterServer;
+  bpdbjobsReportMostColumns.execute();
+});
 
 console.log(
   "Continuing to do node things while the process runs at the same time..."
@@ -39,3 +47,6 @@ console.log(
 //git commit -m 'First commit'
 //git remote add origin https://github.com/JurajBrabec/mars5.git
 //git push -u -f origin master
+
+//npm config set scripts-prepend-node-path auto
+//"debug.node.autoAttach": "on"

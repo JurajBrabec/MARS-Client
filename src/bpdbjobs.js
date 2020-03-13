@@ -1,13 +1,17 @@
 const { spawn } = require("child_process");
-const Delimited = require("./delimited.js");
+const {
+  DelimitedStream,
+  LabeledItem,
+  DelimitedItem
+} = require("./delimited.js");
 
 class NBU {
   params = {};
-  _masterServer = null;
+  fields = [];
   items = [];
+  _masterServer = null;
   _stream = null;
   _process = null;
-  _pattern = null;
 
   constructor(path) {
     this.params = { path: path, cmd: null, args: [] };
@@ -18,41 +22,62 @@ class NBU {
   set masterServer(name) {
     this._masterServer = name;
   }
-  stream = () => new Delimited();
-  createStream = (onData, onEnd) => {
-    let stream = this.stream();
-    stream.on("data", onData);
-    stream.on("end", onEnd);
+
+  createFields = [{ name: "line", type: "string", pattern: /(.*)/u }];
+  addField = field =>
+    this.fields.push({
+      name: field.name,
+      type: field.type || "string",
+      pattern: field.pattern || /(\S+)/u,
+      value: field.value
+    });
+
+  onProcessError = err => {
+    console.error("Failed to start subprocess." + err);
+    this.onProcessClose(err);
+  };
+  onProcessClose = exitCode => this.finish(exitCode);
+
+  itemObject = LabeledItem;
+  createItem = text => {
+    let item = new this.itemObject(this.fields);
+    return item.parse(text);
+  };
+  onItem = item => {
+    this.items.push(item);
+  };
+
+  streamObject = () => new DelimitedStream();
+  createStream = (onStreamData, onStreamEnd) => {
+    let stream = this.streamObject();
+    stream.on("data", onStreamData);
+    stream.on("end", onStreamEnd);
     return stream;
   };
-  processData = data => this.items.push(this.parseData(data));
-  endData = () => console.log("END");
-  parseData = data => {
-    let result = this._pattern.exec(data);
-    return result.groups;
-  };
-  pattern = () => ".*";
-  createPattern = () => new RegExp(this.pattern(), "g");
-  createProcess = (command, callback) => {
+  onStreamData = data => this.onItem(this.createItem(data));
+  onStreamEnd = () => {};
+  //  onStreamEnd = () => console.log("Stream END");
+
+  createProcess = (onProcessError, onProcessClose) => {
+    const encoding = "utf8";
+    const command = this.params.path + "\\" + this.params.cmd + ".cmd";
     const process = spawn(command, this.params.args);
-    process.on("error", err => {
-      console.error("Failed to start subprocess." + err);
-      callback(err);
-    });
-    process.stdout.setEncoding("utf8");
+    process.on("error", onProcessError);
+    process.stdout.setEncoding(encoding);
     process.stdout.pipe(this._stream);
-    process.stderr.setEncoding("utf8");
+    process.stderr.setEncoding(encoding);
     process.stderr.pipe(this._stream);
-    process.on("close", callback);
+    process.on("close", onProcessClose);
     return process;
   };
-  execute = callback => {
-    let command = this.params.path + "\\" + this.params.cmd + ".cmd";
-    console.log("Starting Process " + command);
-    this._pattern = this.createPattern();
-    this._stream = this.createStream(this.processData, this.endData);
-    this._process = this.createProcess(command, callback);
+  execute = (onProcessClose = this.finish) => {
+    this.createFields.map(field => this.addField(field));
+    this._stream = this.createStream(this.onStreamData, this.onStreamEnd);
+    this._process = this.createProcess(this.onProcessError, onProcessClose);
   };
+  finish(exitCode) {
+    console.log("Finished. Exit code#" + exitCode);
+  }
 }
 
 class Bpdbjobs extends NBU {
@@ -67,26 +92,64 @@ class BpdbjobsSummary extends Bpdbjobs {
     super(path);
     this.params.args = ["-summary", "-l"];
   }
-  stream = () => new Delimited(/^(?=Summary)/g);
-  pattern = () => {
-    let pattern = "";
-    pattern += "Summary of jobs on (?<masterServer>\\S+)\\s+";
-    pattern += "Queued: +(?<queued>\\d+)\\s+";
-    pattern += "Waiting-to-Retry: +(?<waitingToRetry>\\d+)\\s+";
-    pattern += "Active: +(?<active>\\d+)\\s+";
-    pattern += "Successful: +(?<successful>\\d+)\\s+";
-    pattern += "Partially Successful: +(?<PartiallySuccessful>\\d+)\\s+";
-    pattern += "Failed: +(?<failed>\\d+)\\s+";
-    pattern += "Incomplete: +(?<incomplete>\\d+)\\s+";
-    pattern += "Suspended: +(?<suspended>\\d+)\\s+";
-    pattern += "Total: +(?<total>\\d+)\\s+";
-    return pattern;
-  };
-  finish = exitCode => {
-    this.masterServer = this.items[0].masterServer;
-    console.log("Finished. Exit code#" + exitCode);
-    console.log("Items: ", this.items);
-    console.log("MasterServer:" + this.masterServer);
+  createFields = [
+    {
+      name: "masterServer",
+      type: "string",
+      pattern: /Summary of jobs on (\S+)/u
+    },
+    { name: "queued", type: "number", pattern: /Queued:\s+(\d+)/u },
+    {
+      name: "waitingToRetry",
+      type: "number",
+      pattern: /Waiting-to-Retry:\s+(\d+)/u
+    },
+    { name: "active", type: "number", pattern: /Active:\s+(\d+)/u },
+    { name: "successful", type: "number", pattern: /Successful:\s+(\d+)/u },
+    {
+      name: "partiallySucessful",
+      type: "number",
+      pattern: /Partially Successful:\s+(\d+)/u
+    },
+    { name: "failed", type: "number", pattern: /Failed:\s+(\d+)/u },
+    { name: "incomplete", type: "number", pattern: /Incomplete:\s+(\d+)/u },
+    { name: "suspended", type: "number", pattern: /Suspended:\s+(\d+)/u },
+    { name: "total", type: "number", pattern: /Total:\s+(\d+)/u },
+    { name: "updatedOn", type: "datetime", value: "NOW" }
+  ];
+
+  streamObject = () => new DelimitedStream(/^(?=Summary)/g);
+
+  onItem = item => {
+    this.masterServer = item.masterServer;
+    this.items.push(item);
   };
 }
-module.exports = BpdbjobsSummary;
+
+class BpdbjobsReportMostColumns extends Bpdbjobs {
+  constructor(path) {
+    super(path);
+    this.params.args = ["-report", "-most_columns"];
+  }
+  createFields = [
+    {
+      name: "masterServer",
+      type: "string",
+      value: this.masterServer
+    },
+    { name: "jobId", type: "number" },
+    { name: "jobType", type: "number" },
+    { name: "state", type: "number" },
+    { name: "status", type: "number" },
+    { name: "policy", type: "string" }
+  ];
+  //  itemObject = fields => new DelimitedItem(fields, ",");
+  itemObject = DelimitedItem;
+
+  finish(exitCode) {
+    super.finish(exitCode);
+    console.log(this.items);
+  }
+}
+
+module.exports = { BpdbjobsSummary, BpdbjobsReportMostColumns };
