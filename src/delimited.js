@@ -1,6 +1,6 @@
 const { Transform } = require("stream");
 
-class Item {
+class Row {
   fields = {};
   constructor(fields) {
     this.fields = fields;
@@ -8,31 +8,31 @@ class Item {
   parse = () => this.fields;
 }
 
-class LabeledItem extends Item {
+class LabeledRow extends Row {
   parse = text => {
-    let item = {};
+    let row = {};
     this.fields.map(field => {
       let match = field.pattern.exec(text);
-      item[field.name] = field.value === undefined ? match[1] : field.value;
+      row[field.name] = field.value === undefined ? match[1] : field.value;
     });
-    return item;
+    return row;
   };
 }
 
-class DelimitedItem extends Item {
+class DelimitedRow extends Row {
   delimiter = ",";
   constructor(fields, delimiter = ",") {
     super(fields);
     this.delimiter = delimiter;
   }
   parse = text => {
-    let item = {};
+    let row = {};
     let match = text.split(this.delimiter);
     this.fields.map((field, index) => {
-      item[field.name] =
+      row[field.name] =
         field.value === undefined ? match[index - 1] : field.value;
     });
-    return item;
+    return row;
   };
 }
 
@@ -67,4 +67,4 @@ class DelimitedStream extends Transform {
   }
 }
 
-module.exports = { DelimitedStream, LabeledItem, DelimitedItem };
+module.exports = { DelimitedStream, LabeledRow, DelimitedRow };

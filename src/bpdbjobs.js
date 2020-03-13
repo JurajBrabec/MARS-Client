@@ -1,14 +1,10 @@
 const { spawn } = require("child_process");
-const {
-  DelimitedStream,
-  LabeledItem,
-  DelimitedItem
-} = require("./delimited.js");
+const { DelimitedStream, LabeledRow, DelimitedRow } = require("./delimited.js");
 
 class NBU {
   params = {};
   fields = [];
-  items = [];
+  rows = [];
   _masterServer = null;
   _stream = null;
   _process = null;
@@ -38,13 +34,13 @@ class NBU {
   };
   onProcessClose = exitCode => this.finish(exitCode);
 
-  itemObject = LabeledItem;
-  createItem = text => {
-    let item = new this.itemObject(this.fields);
-    return item.parse(text);
+  rowClass = LabeledRow;
+  createRow = text => {
+    let row = new this.rowClass(this.fields);
+    return row.parse(text);
   };
-  onItem = item => {
-    this.items.push(item);
+  onRow = row => {
+    this.rows.push(row);
   };
 
   streamObject = () => new DelimitedStream();
@@ -54,7 +50,7 @@ class NBU {
     stream.on("end", onStreamEnd);
     return stream;
   };
-  onStreamData = data => this.onItem(this.createItem(data));
+  onStreamData = data => this.onRow(this.createRow(data));
   onStreamEnd = () => {};
   //  onStreamEnd = () => console.log("Stream END");
 
@@ -120,9 +116,9 @@ class BpdbjobsSummary extends Bpdbjobs {
 
   streamObject = () => new DelimitedStream(/^(?=Summary)/g);
 
-  onItem = item => {
-    this.masterServer = item.masterServer;
-    this.items.push(item);
+  onRow = row => {
+    this.masterServer = row.masterServer;
+    this.rows.push(row);
   };
 }
 
@@ -144,11 +140,11 @@ class BpdbjobsReportMostColumns extends Bpdbjobs {
     { name: "policy", type: "string" }
   ];
   //  itemObject = fields => new DelimitedItem(fields, ",");
-  itemObject = DelimitedItem;
+  rowClass = DelimitedRow;
 
   finish(exitCode) {
     super.finish(exitCode);
-    console.log(this.items);
+    console.log(this.rows);
   }
 }
 

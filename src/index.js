@@ -22,8 +22,11 @@ bpdbjobsSummary.execute(() => {
   const bpdbjobsReportMostColumns = new BpdbjobsReportMostColumns(
     "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
   );
+  console.log(bpdbjobsSummary.rows);
   bpdbjobsReportMostColumns.masterServer = bpdbjobsSummary.masterServer;
-  bpdbjobsReportMostColumns.execute();
+  bpdbjobsReportMostColumns.execute(() => {
+    console.log(bpdbjobsReportMostColumns.rows);
+  });
 });
 
 console.log(
