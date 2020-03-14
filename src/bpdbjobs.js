@@ -28,42 +28,43 @@ class NBU {
       value: field.value
     });
 
-  onProcessError = err => {
-    console.error("Failed to start subprocess." + err);
-    this.onProcessClose(err);
-  };
+  onProcessError = err =>
+    console.error(
+      "ERROR " + err.code + ": Failed to start subprocess " + err.path
+    );
   onProcessClose = exitCode => this.finish(exitCode);
 
-  rowClass = LabeledRow;
+  //rowClass = LabeledRow;
+  //createRow = text => {
+  //    let row = new this.rowClass(this.fields);
+  //    return row.parse(text);
+  //}
+  rowObject = () => new Row();
   createRow = text => {
-    let row = new this.rowClass(this.fields);
+    let row = this.rowObject();
+    row.fields = this.fields;
     return row.parse(text);
   };
-  onRow = row => {
-    this.rows.push(row);
-  };
+  onRow = row => (row == undefined ? false : this.rows.push(row));
 
   streamObject = () => new DelimitedStream();
-  createStream = (onStreamData, onStreamEnd) => {
-    let stream = this.streamObject();
-    stream.on("data", onStreamData);
-    stream.on("end", onStreamEnd);
-    return stream;
-  };
+  createStream = (onStreamData, onStreamEnd) =>
+    this.streamObject()
+      .on("data", onStreamData)
+      .on("end", onStreamEnd);
   onStreamData = data => this.onRow(this.createRow(data));
   onStreamEnd = () => {};
-  //  onStreamEnd = () => console.log("Stream END");
 
   createProcess = (onProcessError, onProcessClose) => {
     const encoding = "utf8";
     const command = this.params.path + "\\" + this.params.cmd + ".cmd";
-    const process = spawn(command, this.params.args);
-    process.on("error", onProcessError);
+    const process = spawn(command, this.params.args)
+      .on("error", onProcessError)
+      .on("close", onProcessClose);
     process.stdout.setEncoding(encoding);
     process.stdout.pipe(this._stream);
     process.stderr.setEncoding(encoding);
     process.stderr.pipe(this._stream);
-    process.on("close", onProcessClose);
     return process;
   };
   execute = (onProcessClose = this.finish) => {
@@ -81,6 +82,7 @@ class Bpdbjobs extends NBU {
     super(path);
     this.params.cmd = "bpdbjobs";
   }
+  rowObject = () => new LabeledRow();
 }
 
 class BpdbjobsSummary extends Bpdbjobs {
@@ -117,6 +119,7 @@ class BpdbjobsSummary extends Bpdbjobs {
   streamObject = () => new DelimitedStream(/^(?=Summary)/g);
 
   onRow = row => {
+    if (row === undefined) return false;
     this.masterServer = row.masterServer;
     this.rows.push(row);
   };
@@ -139,8 +142,8 @@ class BpdbjobsReportMostColumns extends Bpdbjobs {
     { name: "status", type: "number" },
     { name: "policy", type: "string" }
   ];
-  //  itemObject = fields => new DelimitedItem(fields, ",");
-  rowClass = DelimitedRow;
+  //  rowClass = DelimitedRow;
+  rowObject = () => new DelimitedRow(",");
 
   finish(exitCode) {
     super.finish(exitCode);

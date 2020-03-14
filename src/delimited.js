@@ -2,10 +2,7 @@ const { Transform } = require("stream");
 
 class Row {
   fields = {};
-  constructor(fields) {
-    this.fields = fields;
-  }
-  parse = () => this.fields;
+  parse = text => this.fields;
 }
 
 class LabeledRow extends Row {
@@ -13,24 +10,27 @@ class LabeledRow extends Row {
     let row = {};
     this.fields.map(field => {
       let match = field.pattern.exec(text);
-      row[field.name] = field.value === undefined ? match[1] : field.value;
+      if (match !== null)
+        row[field.name] = field.value === undefined ? match[1] : field.value;
     });
+    if (row == {}) row = undefined;
     return row;
   };
 }
 
 class DelimitedRow extends Row {
   delimiter = ",";
-  constructor(fields, delimiter = ",") {
-    super(fields);
+  constructor(delimiter = ",") {
+    super();
     this.delimiter = delimiter;
   }
   parse = text => {
     let row = {};
     let match = text.split(this.delimiter);
     this.fields.map((field, index) => {
-      row[field.name] =
-        field.value === undefined ? match[index - 1] : field.value;
+      if (index < match.length)
+        row[field.name] =
+          field.value === undefined ? match[index - 1] : field.value;
     });
     return row;
   };
