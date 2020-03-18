@@ -8,14 +8,9 @@ class Rows {
   addField(name, type = "string", pattern, value) {
     let field = {};
     if (typeof name == "object") field = name;
-    if (typeof name == "string")
-      field = {
-        name: name,
-        type: type,
-        pattern: pattern,
-        value: value
-      };
+    if (typeof name == "string") field = { name, type, pattern, value };
     this.fields.push(field);
+    return this;
   }
   parseText() {
     let row = {};
@@ -97,28 +92,6 @@ class DelimitedRows extends Rows {
   }
 }
 
-headers = [
-  {
-    name: "id",
-    type: "number",
-    value: 1
-  },
-  {
-    name: "masterServer",
-    type: "string",
-    pattern: /Master Server: (\S+)/u
-  },
-  {
-    name: "dataServer",
-    type: "string",
-    pattern: /Data Server: (\S+)/u
-  },
-  {
-    name: "created",
-    type: "datetime",
-    value: "2020-03-14 15:30"
-  }
-];
 //text = "Master Server: testServer\nData Server: anotherServer";
 text = "aaa,bbb";
 
@@ -131,27 +104,3 @@ rows.addField("created", "datetime", "", "2020-03-14 15:30");
 rows.addRow(text);
 rows.addRow(text);
 console.log(rows.asJSON());
-
-const mariadb = require("mariadb");
-
-mariadb
-  .createConnection({
-    host: "192.168.1.10",
-    port: 32771,
-    user: "root",
-    password: "r00t123"
-  })
-  .then(conn => {
-    conn
-      .query("select now();", [2])
-      .then(rows => {
-        console.log(rows); // [{ "1": 1 }]
-        conn.end();
-      })
-      .catch(err => {
-        console.log(err);
-      });
-  })
-  .catch(err => {
-    console.log(err);
-  });
