@@ -12,6 +12,7 @@
   "dependencies": {
     "chalk": "^3.0.0",
     "commander": "^4.1.1",
+    "dotenv": "^8.2.0",
     "mariadb": "^2.2.0"
   }
 }
