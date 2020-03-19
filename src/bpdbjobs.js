@@ -152,3 +152,22 @@ class BpdbjobsReportMostColumns extends Bpdbjobs {
 }
 
 module.exports = { BpdbjobsSummary, BpdbjobsReportMostColumns };
+
+const bpdbjobsSummary = new BpdbjobsSummary(
+  "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
+);
+//bpdbjobsSummary.onFinish=func;
+bpdbjobsSummary.execute(() => {
+  const bpdbjobsReportMostColumns = new BpdbjobsReportMostColumns(
+    "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
+  );
+  console.log(bpdbjobsSummary.rows);
+  bpdbjobsReportMostColumns.masterServer = bpdbjobsSummary.masterServer;
+  bpdbjobsReportMostColumns.execute(() => {
+    console.log(bpdbjobsReportMostColumns.rows);
+  });
+});
+
+console.log(
+  "Continuing to do node things while the process runs at the same time..."
+);

@@ -1,6 +1,8 @@
 const commander = require("commander");
 const chalk = require("chalk");
-const { BpdbjobsSummary, BpdbjobsReportMostColumns } = require("./bpdbjobs.js");
+const { NetBackup } = require("./netBackup");
+const dotenv = require("dotenv");
+dotenv.config();
 
 commander
   .version("v0.0.1")
@@ -14,18 +16,12 @@ console.log(chalk.red("TEST " + process.version));
 if (commander.aname) console.log(`Your name is ${commander.aname}.`);
 if (commander.debug) console.log(`Debug mode.`);
 
-const bpdbjobsSummary = new BpdbjobsSummary(
-  "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
-);
-//bpdbjobsSummary.onFinish=func;
-bpdbjobsSummary.execute(() => {
-  const bpdbjobsReportMostColumns = new BpdbjobsReportMostColumns(
-    "M:\\Veritas\\Netbackup\\bin\\admincmd\\"
-  );
-  console.log(bpdbjobsSummary.rows);
-  bpdbjobsReportMostColumns.masterServer = bpdbjobsSummary.masterServer;
-  bpdbjobsReportMostColumns.execute(() => {
-    console.log(bpdbjobsReportMostColumns.rows);
+const NBU = new NetBackup(process.env.NBU_HOME);
+
+NBU.getSummary(() => {
+  console.log(NBU.summary.rows.asJSON());
+  NBU.getJobs(() => {
+    console.log(NBU.jobs.rows.asJSON());
   });
 });
 

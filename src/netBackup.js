@@ -1,33 +1,90 @@
+const { Transform } = require("stream");
 const { spawn } = require("child_process");
-const { DelimitedStream } = require("./delimited.js");
 const { LabeledRows, DelimitedRows } = require("./rows.js");
 
-class command {
-  _stream = null;
-  _process = null;
-  fields = [{ name: "line", type: "string", pattern: /(.*)/u }];
-
-  constructor(path) {
-    this.params = { path: path, cmd: null, args: [] };
+class DelimitedStream extends Transform {
+  constructor(delimiter = /\r?\n/g) {
+    super({ objectMode: true });
+    this._delimiter =
+      delimiter instanceof RegExp ? delimiter : new RegExp(delimiter, "g");
+    this._encoding = "utf8";
+    this._buffer = "";
+    this._first = true;
   }
 
-  onProcessError(err) {
+  _transform(chunk, encoding, callback) {
+    if (encoding === "buffer") {
+      this._buffer += chunk.toString(this._encoding);
+    } else if (encoding === this._encoding) {
+      this._buffer += chunk;
+    } else {
+      this._buffer += Buffer.from(chunk, encoding).toString(this._encoding);
+    }
+    if (this._delimiter.test(this._buffer)) {
+      let sections = this._buffer.split(this._delimiter);
+      this._buffer = sections.pop();
+      sections.forEach(this.push, this);
+    }
+    callback();
+  }
+
+  _flush(callback) {
+    callback(null, this._buffer);
+  }
+}
+
+class NetBackup {
+  constructor(path) {
+    this.path = path;
+    this._masterServer = null;
+  }
+  get masterServer() {
+    return this._masterServer;
+  }
+  set masterServer(name) {
+    this._masterServer = name;
+  }
+  getSummary(callback) {
+    this.summary = new BpdbjobsSummary(this);
+    return this.summary.execute(callback);
+  }
+  getJobs(callback) {
+    this.jobs = new BpdbjobsReportMostColumns(this);
+    return this.jobs.execute(callback);
+  }
+}
+
+class Command {
+  _stream = null;
+  _process = null;
+  _callback = null;
+  fields = [{ name: "line", type: "string", pattern: /(.*)/u }];
+
+  constructor(path, cmd, args = []) {
+    this.params = { path, cmd, args };
+  }
+
+  onProcessError = err => {
     console.error(
       "ERROR " + err.code + ": Failed to start subprocess " + err.path
     );
     return this;
-  }
-  onProcessClose(exitCode) {
+  };
+  onProcessClose = exitCode => {
+    this.onFinish(exitCode);
+    if (typeof this._callback === "function") this._callback(exitCode);
+  };
+  onFinish = exitCode => {
     return this.finish(exitCode);
-  }
+  };
 
   createStream() {
     return new DelimitedStream();
   }
   onStreamData = data => {
-    return this.rows.onRow(this.rows.addRow(data));
+    return this.rows.addRow(data);
   };
-  onStreamEnd() {}
+  onStreamEnd = () => {};
 
   createRows(fields) {
     return new DelimitedRows(fields);
@@ -44,28 +101,33 @@ class command {
     process.stderr.pipe(this._stream);
     return process;
   }
-  execute(onProcessClose = this.finish) {
+  execute(callback) {
+    this._callback = callback;
     this.rows = this.createRows(this.fields);
     this._stream = this.createStream()
       .on("data", this.onStreamData)
       .on("end", this.onStreamEnd);
-    this._process = this.createProcess(this.onProcessError, onProcessClose);
+    this._process = this.createProcess(
+      this.onProcessError,
+      this.onProcessClose
+    );
   }
   finish(exitCode) {
     console.log("Finished. Exit code#" + exitCode);
+    return this;
   }
 }
 
-class Bpdbjobs extends command {
-  constructor(path) {
-    super(path);
-    this.params.cmd = "bpdbjobs";
+class Bpdbjobs extends Command {
+  constructor(netBackup) {
+    super(netBackup.path, "bpdbjobs");
+    this.netBackup = NetBackup;
   }
 }
 
 class BpdbjobsSummary extends Bpdbjobs {
-  constructor(path) {
-    super(path);
+  constructor(netBackup) {
+    super(netBackup);
     this.params.args = ["-summary", "-l"];
   }
   fields = [
@@ -100,18 +162,22 @@ class BpdbjobsSummary extends Bpdbjobs {
   createStream() {
     return new DelimitedStream(/^(?=Summary)/g);
   }
+  finish(exitCode) {
+    this.netBackup.masterServer = this.rows.rows[0].masterServer;
+    super.finish(exitCode);
+  }
 }
 
 class BpdbjobsReportMostColumns extends Bpdbjobs {
-  constructor(path) {
-    super(path);
+  constructor(netBackup) {
+    super(netBackup);
     this.params.args = ["-report", "-most_columns"];
   }
   fields = [
     {
       name: "masterServer",
       type: "string",
-      value: this.masterServer
+      value: this.netBackup.masterServer
     },
     { name: "jobId", type: "number" },
     { name: "jobType", type: "number" },
@@ -119,26 +185,9 @@ class BpdbjobsReportMostColumns extends Bpdbjobs {
     { name: "status", type: "number" },
     { name: "policy", type: "string" }
   ];
-
-  finish(exitCode) {
-    super.finish(exitCode);
-    console.log(this.rows);
-  }
 }
 
-class NBU {
-  constructor(path) {
-    this.path = path;
-    this._masterServer = null;
-  }
-  get masterServer() {
-    return this._masterServer;
-  }
-  set masterServer(name) {
-    this._masterServer = name;
-  }
-}
-
+module.exports = { NetBackup };
 function testRows() {
   text = "Master Server: testServer\nData Server: anotherServer";
   //text = "aaa,bbb";
@@ -154,22 +203,3 @@ function testRows() {
   rows.addRow(text);
   console.log(rows.asJSON());
 }
-
-const bpdbjobsSummary = new BpdbjobsSummary(
-  "D:\\Veritas\\Netbackup\\bin\\admincmd\\"
-);
-//bpdbjobsSummary.onFinish=func;
-bpdbjobsSummary.execute(() => {
-  const bpdbjobsReportMostColumns = new BpdbjobsReportMostColumns(
-    "D:\\Veritas\\Netbackup\\bin\\admincmd\\"
-  );
-  console.log(bpdbjobsSummary.rows.asSQL("table1"));
-  bpdbjobsReportMostColumns.masterServer = bpdbjobsSummary.masterServer;
-  bpdbjobsReportMostColumns.execute(() => {
-    console.log(bpdbjobsReportMostColumns.rows.asSQL("table2"));
-  });
-});
-
-console.log(
-  "Continuing to do node things while the process runs at the same time..."
-);

@@ -21,13 +21,13 @@ class Rows {
   }
   addRow(text) {
     let row = this.parseText(text);
-    if (row !== {}) {
+    if (row !== null) {
       this.rows.push(row);
-      this.onRow();
+      this.onRow(row);
     }
     return this;
   }
-  onRow() {
+  onRow(row) {
     //    if ((this.items.length = 1)) {
     //      console.log(this.asSQL());
     //      this.items = [];
@@ -67,7 +67,8 @@ class LabeledRows extends Rows {
   parseText(text) {
     let row = super.parseText(text);
     this.fields.forEach(field => {
-      let match = field.pattern === RegExp ? field.pattern.exec(text) : false;
+      let match =
+        field.pattern instanceof RegExp ? field.pattern.exec(text) : false;
       if (match) row[field.name] = match[1];
     });
     return row;
@@ -81,6 +82,7 @@ class DelimitedRows extends Rows {
     this.delimiter = delimiter;
   }
   parseText(text) {
+    if (text == "") return null;
     let row = super.parseText(text);
     let match = text.split(this.delimiter);
     this.fields
