@@ -67,7 +67,7 @@ class LabeledRows extends Rows {
   parseText(text) {
     let row = super.parseText(text);
     this.fields.forEach(field => {
-      let match = field.pattern.exec(text);
+      let match = field.pattern === RegExp ? field.pattern.exec(text) : false;
       if (match) row[field.name] = match[1];
     });
     return row;
@@ -92,15 +92,4 @@ class DelimitedRows extends Rows {
   }
 }
 
-//text = "Master Server: testServer\nData Server: anotherServer";
-text = "aaa,bbb";
-
-rows = new DelimitedRows([], ",");
-rows.addField("id", "number", "", 1);
-rows.addField("masterServer", "string", /Master Server: (\S+)/u);
-rows.addField("dataServer", "string", /Data Server: (\S+)/u);
-rows.addField("created", "datetime", "", "2020-03-14 15:30");
-//console.log(rows.parseText(text));
-rows.addRow(text);
-rows.addRow(text);
-console.log(rows.asJSON());
+module.exports = { Rows, LabeledRows, DelimitedRows };
