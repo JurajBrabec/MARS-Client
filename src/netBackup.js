@@ -1,37 +1,8 @@
-const { Transform } = require("stream");
-const { spawn } = require("child_process");
-const { LabeledRows, DelimitedRows } = require("./rows.js");
-
-class DelimitedStream extends Transform {
-  constructor(delimiter = /\r?\n/g) {
-    super({ objectMode: true });
-    this._delimiter =
-      delimiter instanceof RegExp ? delimiter : new RegExp(delimiter, "g");
-    this._encoding = "utf8";
-    this._buffer = "";
-    this._first = true;
-  }
-
-  _transform(chunk, encoding, callback) {
-    if (encoding === "buffer") {
-      this._buffer += chunk.toString(this._encoding);
-    } else if (encoding === this._encoding) {
-      this._buffer += chunk;
-    } else {
-      this._buffer += Buffer.from(chunk, encoding).toString(this._encoding);
-    }
-    if (this._delimiter.test(this._buffer)) {
-      let sections = this._buffer.split(this._delimiter);
-      this._buffer = sections.pop();
-      sections.forEach(this.push, this);
-    }
-    callback();
-  }
-
-  _flush(callback) {
-    callback(null, this._buffer);
-  }
-}
+const {
+  DelimitedStream,
+  LabeledCommand,
+  DelimitedCommand
+} = require("./command");
 
 class NetBackup {
   constructor(path) {
@@ -44,93 +15,35 @@ class NetBackup {
   set masterServer(name) {
     this._masterServer = name;
   }
-  getSummary(callback) {
+  init() {
+    let summary = new BpdbjobsSummary(this);
+    return new Promise(function(resolve, reject) {
+      summary.execute(() => {
+        let masterServer = summary.netBackup.masterServer;
+        if (masterServer) {
+          resolve(masterServer);
+        } else {
+          reject("Unable to retrieve Master Server name.");
+        }
+      });
+    });
+  }
+  getSummary() {
     this.summary = new BpdbjobsSummary(this);
-    return this.summary.execute(callback);
+    return this.summary.execute();
   }
-  getJobs(callback) {
+  getJobs() {
     this.jobs = new BpdbjobsReportMostColumns(this);
-    return this.jobs.execute(callback);
+    return this.jobs.execute();
   }
 }
 
-class Command {
-  _stream = null;
-  _process = null;
-  _callback = null;
-  fields = [{ name: "line", type: "string", pattern: /(.*)/u }];
-
-  constructor(path, cmd, args = []) {
-    this.params = { path, cmd, args };
-  }
-
-  onProcessError = err => {
-    console.error(
-      "ERROR " + err.code + ": Failed to start subprocess " + err.path
-    );
-    return this;
-  };
-  onProcessClose = exitCode => {
-    this.onFinish(exitCode);
-    if (typeof this._callback === "function") this._callback(exitCode);
-  };
-  onFinish = exitCode => {
-    return this.finish(exitCode);
-  };
-
-  createStream() {
-    return new DelimitedStream();
-  }
-  onStreamData = data => {
-    return this.rows.addRow(data);
-  };
-  onStreamEnd = () => {};
-
-  createRows(fields) {
-    return new DelimitedRows(fields);
-  }
-  createProcess(onProcessError, onProcessClose) {
-    const encoding = "utf8";
-    const command = this.params.path + "\\" + this.params.cmd + ".cmd";
-    const process = spawn(command, this.params.args)
-      .on("error", onProcessError)
-      .on("close", onProcessClose);
-    process.stdout.setEncoding(encoding);
-    process.stdout.pipe(this._stream);
-    process.stderr.setEncoding(encoding);
-    process.stderr.pipe(this._stream);
-    return process;
-  }
-  execute(callback) {
-    this._callback = callback;
-    this.rows = this.createRows(this.fields);
-    this._stream = this.createStream()
-      .on("data", this.onStreamData)
-      .on("end", this.onStreamEnd);
-    this._process = this.createProcess(
-      this.onProcessError,
-      this.onProcessClose
-    );
-  }
-  finish(exitCode) {
-    console.log("Finished. Exit code#" + exitCode);
-    return this;
-  }
-}
-
-class Bpdbjobs extends Command {
+class BpdbjobsSummary extends LabeledCommand {
   constructor(netBackup) {
-    super(netBackup.path, "bpdbjobs");
-    this.netBackup = NetBackup;
+    super(netBackup.path, "bpdbjobs", ["-summary", "-l"]);
+    this.netBackup = netBackup;
   }
-}
-
-class BpdbjobsSummary extends Bpdbjobs {
-  constructor(netBackup) {
-    super(netBackup);
-    this.params.args = ["-summary", "-l"];
-  }
-  fields = [
+  outputFields = [
     {
       name: "masterServer",
       type: "string",
@@ -156,28 +69,26 @@ class BpdbjobsSummary extends Bpdbjobs {
     { name: "updatedOn", type: "datetime", value: "NOW" }
   ];
 
-  createRows(fields) {
-    return new LabeledRows(fields);
-  }
-  createStream() {
-    return new DelimitedStream(/^(?=Summary)/g);
-  }
-  finish(exitCode) {
-    this.netBackup.masterServer = this.rows.rows[0].masterServer;
-    super.finish(exitCode);
-  }
+  createStream = () => new DelimitedStream(/^(?=Summary)/g);
+  onStreamData = data => {
+    let row = JSON.parse(data);
+    //let row = data;
+    this.netBackup.masterServer = row.masterServer;
+  };
 }
 
-class BpdbjobsReportMostColumns extends Bpdbjobs {
+class BpdbjobsReportMostColumns extends DelimitedCommand {
   constructor(netBackup) {
-    super(netBackup);
-    this.params.args = ["-report", "-most_columns"];
+    super(netBackup.path, "bpdbjobs", ["-report", "-most_columns"]);
+    this.netBackup = netBackup;
+    this.outputFields.map(field => {
+      if (field.name == "masterServer") field.value = netBackup.masterServer;
+    });
   }
-  fields = [
+  outputFields = [
     {
       name: "masterServer",
-      type: "string",
-      value: this.netBackup.masterServer
+      type: "string"
     },
     { name: "jobId", type: "number" },
     { name: "jobType", type: "number" },
@@ -188,18 +99,3 @@ class BpdbjobsReportMostColumns extends Bpdbjobs {
 }
 
 module.exports = { NetBackup };
-function testRows() {
-  text = "Master Server: testServer\nData Server: anotherServer";
-  //text = "aaa,bbb";
-
-  //rows = new DelimitedRows([], ",");
-  rows = new LabeledRows([]);
-  rows.addField("id", "number", "", 1);
-  rows.addField("masterServer", "string", /Master Server: (\S+)/u);
-  rows.addField("dataServer", "string", /Data Server: (\S+)/u);
-  rows.addField("created", "datetime", "", "2020-03-14 15:30");
-  //console.log(rows.parseText(text));
-  rows.addRow(text);
-  rows.addRow(text);
-  console.log(rows.asJSON());
-}

@@ -1,7 +1,7 @@
 const commander = require("commander");
 const chalk = require("chalk");
-const { NetBackup } = require("./netBackup");
 const dotenv = require("dotenv");
+const { NetBackup } = require("./netBackup");
 dotenv.config();
 
 commander
@@ -17,28 +17,32 @@ if (commander.aname) console.log(`Your name is ${commander.aname}.`);
 if (commander.debug) console.log(`Debug mode.`);
 
 const NBU = new NetBackup(process.env.NBU_HOME);
-
-NBU.getSummary(() => {
-  console.log(NBU.summary.rows.asJSON());
-  NBU.getJobs(() => {
-    console.log(NBU.jobs.rows.asJSON());
+NBU.init()
+  .then(() => {
+    console.log(chalk.blue(`Master Server: ${NBU.masterServer}`));
+    return NBU.getSummary();
+  })
+  .then(rows => {
+    console.log("summary:");
+    rows.pipe(process.stdout);
+    return NBU.getJobs();
+  })
+  .then(rows => {
+    console.log("jobs:");
+    rows.pipe(process.stdout);
+  })
+  .catch(err => {
+    console.log(chalk.red("Error:" + err));
   });
-});
 
 console.log(
   "Continuing to do node things while the process runs at the same time..."
 );
 
-//let stream = process.stdin;
-//const fs = require("fs");
-//let stream = fs.createReadStream(".gitignore", "utf8");
-//let array = [];
-//stream.pipe(delimited);
-
 //git config --global user.name "Juraj Brabec"
 //git config --global user.email juraj@brabec.sk
 
-//"terminal.integrated.shell.windows": "cmd.exe",
+//"terminal.integrated.shell.windows": "bash.exe",
 //"terminal.integrated.env.windows": {"path": "P:/PortableApps/NodeJSPortable/App;P:/PortableApps/GitPortable/App/Git/bin"},
 
 //git init
