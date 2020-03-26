@@ -28,6 +28,7 @@
       "runtimeExecutable": "P:/PortableApps/NodeJSPortable/App/node",
       "skipFiles": ["<node_internals>/**"],
       "program": "${file}"
+      "env":{"DEBUG":"*"}
     }
   ]
 }
