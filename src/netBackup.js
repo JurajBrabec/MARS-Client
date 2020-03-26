@@ -1,15 +1,16 @@
 var debug = require("debug")("nbu");
 const { DelimitedTransform, LabeledTransform } = require("./streams");
-const { CommandReadable } = require("./commands");
+const { Command, CommandReadable } = require("./commands");
 
-class NetBackup {
-  constructor(path) {
+function netBackup(path) {
+  return new Promise((resolve, reject) => new NetBackup(resolve, reject, path));
+}
+class NetBackup extends Command {
+  constructor(resolve, reject, path) {
+    super(resolve, reject);
     this.path = path;
-    this.summary()
-      .asObjects()
-      .then(obj => (this.masterServer = obj.masterServer))
-      .catch(() => (this.masterServer = null))
-      .finally(() => debug(this.masterServer));
+    this._masterServer = null;
+    this.init();
   }
   get masterServer() {
     return this._masterServer;
@@ -17,14 +18,25 @@ class NetBackup {
   set masterServer(name) {
     this._masterServer = name;
   }
+  async init() {
+    try {
+      const obj = await this.summary().asObjects();
+      this.masterServer = obj.masterServer;
+      this.successEnd(this);
+    } catch (err) {
+      this._masterServer = null;
+      this.throwError(err);
+    }
+  }
   summary() {
     return new BpdbJobsSummaryCommand(this);
   }
+
   jobs() {
     return new BpdbJobsReportCommand(this);
   }
   slps() {
-    return new NbStl(this);
+    return new NbStlCommand(this);
   }
 }
 
@@ -49,7 +61,9 @@ class BpdbJobsSummaryTransform extends LabeledTransform {
 }
 class BpdbJobsSummaryCommand extends NetBackupCommand {
   constructor(netBackup) {
-    super(netBackup, "/bin/admincmd/bpdbjobs", ["-summary", "-l"]);
+    const binary = "/bin/admincmd/bpdbjobs";
+    const args = ["-summary", "-l"];
+    super(netBackup, binary, args);
     this.table = "bpdbjobs_summary";
     this.fields = [
       {
@@ -114,18 +128,19 @@ class BpdbJobsSummaryCommand extends NetBackupCommand {
     ];
   }
   transform = () => new BpdbJobsSummaryTransform(/^(?=Summary)/);
-  //  onData = data => (this.masterServer = data.masterServer);
 }
 
 class BpdbJobsReportTransform extends DelimitedTransform {
   validateRow = row => {
-    //if (row === undefined || row.jobId === null) return false;
+    if (row === undefined || row.jobId === null) return false;
     return row;
   };
 }
 class BpdbJobsReportCommand extends NetBackupCommand {
   constructor(netBackup) {
-    super(netBackup, "/bin/admincmd/bpdbjobs", ["-report", "-most_columns"]);
+    const binary = "/bin/admincmd/bpdbjobs";
+    const args = ["-report", "-most_columns"];
+    super(netBackup, binary, args);
     this.table = "bpdbjobs_report";
     this.fields = [
       { name: "jobId", type: "number" },
@@ -200,28 +215,37 @@ class BpdbJobsReportCommand extends NetBackupCommand {
 }
 
 class NbstlTransform extends DelimitedTransform {
-  createRows(section) {
-    let partialFields = [];
+  createRows(section, fields = this.fields) {
+    let mainFields = [];
     let rows = [];
     section.split(/\r?\n\s*/m).forEach((line, index) => {
+      if (line == "") return;
       if (index == 0) {
-        const partialRow = super.createRows(line);
-        partialFields = this.fields.map(field => {
+        const row = super.createRows(line, fields);
+        mainFields = this.fields.map(field => {
           let result = { ...field };
-          if (partialRow[field.name] !== undefined)
-            result.value = partialRow[field.name];
+          if (row[field.name] !== undefined) result.value = row[field.name];
           return result;
         });
       } else {
-        rows.push(super.createRows(line));
+        const row = super.createRows(line, mainFields);
+        rows.push(row);
       }
+      //      } else {
+      //        mainFields.map(field => {
+      //          let result = { ...field };
+      //          if (row[field.name] !== undefined) result.value = row[field.name];
+      //          return result;
+      //      });
+      //      rows.push(row);
+      //      }
     });
     return rows;
   }
 
   validateRow = row => {
-    if (row.useFor === null) return false;
-    row.masterServer = this.masterServer;
+    if (row.useFor === undefined) return false;
+    //    row.masterServer = this.masterServer;
     Object.entries(row).forEach(([key, value]) => {
       if (value == "*NULL*") row[key] = null;
       if (value == "NOW()")
@@ -234,12 +258,14 @@ class NbstlTransform extends DelimitedTransform {
   };
 }
 
-class NbStl extends NetBackupCommand {
+class NbStlCommand extends NetBackupCommand {
   constructor(netBackup) {
-    super(netBackup.path, "/bin/admincmd/nbstl", ["-l"]);
-    this.tableName = "nbstl";
+    const binary = "/bin/admincmd/nbstl";
+    const args = ["-l"];
+    super(netBackup, binary, args);
+    this.table = "nbstl";
     this.fields = [
-      { name: "masterServer", type: "string", value: "masterServer" },
+      { name: "masterServer", type: "string", value: this.masterServer },
       { name: "slpName", type: "string" },
       { name: "dataClassification", type: "string", update: true },
       { name: "duplicationPriority", type: "string", update: true },
@@ -265,6 +291,6 @@ class NbStl extends NetBackupCommand {
       { name: "obsoleted", type: "datetime", value: null, update: true }
     ];
   }
-  transform = () => new NbstlTransform(/^(?=[A-Za-z]+)/m, / /);
+  transform = () => new NbstlTransform(/^(?=[A-Za-z]+)/m, /\s/);
 }
-module.exports = { NetBackup };
+module.exports = { netBackup };

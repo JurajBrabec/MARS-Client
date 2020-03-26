@@ -1,6 +1,31 @@
 var debug = require("debug")("command");
+const EventEmitter = require("events");
 const { execFile } = require("child_process");
 const { TextWritable, ObjectWritable, MariaDbWritable } = require("./streams");
+
+class Command extends EventEmitter {
+  constructor(resolve, reject) {
+    super();
+    this.resolve = resolve;
+    this.reject = reject;
+  }
+  throwError(err) {
+    if (this.reject) {
+      this.resolve = null;
+      process.nextTick(this.reject, err);
+      this.reject = null;
+    }
+    this.emit("end", err);
+  }
+  successEnd(val) {
+    if (this.resolve) {
+      this.reject = null;
+      process.nextTick(this.resolve, val);
+      this.resolve = null;
+      this.emit("end");
+    }
+  }
+}
 
 class CommandReadable {
   constructor(path, cmd, args) {
@@ -23,7 +48,7 @@ class CommandReadable {
     return this;
   };
 
-  transform = () => new TextWritable();
+  transform = () => {};
 
   asText() {
     this._transform = new TextWritable();
@@ -68,5 +93,6 @@ class CommandReadable {
 }
 
 module.exports = {
+  Command,
   CommandReadable
 };

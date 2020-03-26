@@ -54,7 +54,7 @@ class MariaDbWritable extends stream.Writable {
       })
     );
     this.on("finish", () => {
-      this.promises.push(this.doSql());
+      if (this.items.length > 0) this.promises.push(this.doSql());
       this.finished();
       this.promises.shift();
       debug(
@@ -86,10 +86,6 @@ class MariaDbWritable extends stream.Writable {
   doSql() {
     let res = new Promise((resolve, reject) => {
       try {
-        if (this.items.length == 0) {
-          resolve({ rows: null });
-          return;
-        }
         let data = this.items.map(item => item);
         this.items = [];
         if (this.sql === null) this.sql = this.prepareSql(data[0]);
@@ -186,24 +182,29 @@ class DelimitedTransform extends CommandTransform {
     this.separator =
       separator instanceof RegExp ? separator : new RegExp(separator, "g");
   }
-  createRows(section) {
+  createRows(section, fields = this.fields) {
     const placeHolder = "~^~";
-    let row = super.createRows(section);
+    const row = super.createRows(section);
     const escape = new RegExp(`\\${this.separator.source}`, "g").test(section);
     if (escape)
       section = section.replace(`\\${this.separator.source}`, placeHolder);
-    let match = section.split(this.separator);
-    this.fields
-      .filter(field => field.value === undefined)
-      .forEach((field, index) => {
-        if (index < match.length)
+    const match = section.split(this.separator);
+    let index = 0;
+    fields.forEach(field => {
+      if (index < match.length) {
+        if (field.value === undefined) {
           row[field.name] =
             match[index] == ""
               ? null
               : escape
               ? match[index].replace(placeHolder, `\\${this.separator.source}`)
               : match[index];
-      });
+          index++;
+        } else {
+          row[field.name] = field.value;
+        }
+      }
+    });
     return row;
   }
 }

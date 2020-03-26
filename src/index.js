@@ -2,7 +2,7 @@ const dotenv = require("dotenv").config();
 var debug = require("debug")("app");
 const commander = require("commander");
 const chalk = require("chalk");
-const { NetBackup } = require("./netBackup");
+const { netBackup } = require("./netBackup");
 const { createConnection } = require("./db");
 
 commander
@@ -19,35 +19,31 @@ if (commander.debug) console.log(`Debug mode.`);
 
 debug("start");
 
-const NBU = new NetBackup(process.env.NBU_HOME);
-
-function runMe() {
-  createConnection()
-    .then(connection => {
-      console.log(chalk.blue(`Master Server: ${NBU.masterServer}`));
-      NBU.summary()
-        .toDatabase(connection, 1)
-        .then(res => {
-          console.log(res);
-          return NBU.jobs().asObjects();
-          //          .toDatabase(connection, 50);
-        })
-        .then(res => {
-          console.log(res.length);
-        })
-        .then(() => {
-          connection.end().then(() => {
-            console.log("Connection closed");
-          });
-        });
-    })
-    .catch(err => {
+async function runMe() {
+  try {
+    const connection = await createConnection();
+    try {
+      const nbu = await netBackup(process.env.NBU_HOME);
+      let sum = await nbu.summary();
+      let res = await sum.toDatabase(connection, 1);
+      console.log(chalk.blue(`Master Server: ${nbu.masterServer}`));
+      console.log(res);
+      res = await nbu.jobs().toDatabase(connection, 50);
+      console.log(res);
+      res = await nbu.slps().toDatabase(connection, 50);
+      //res = await nbu.slps().asObjects();
+      console.log(res);
+    } catch (err) {
+      console.log("App error:");
       console.error(err);
-    });
+    } finally {
+      await connection.end();
+      console.log("Connection closed");
+    }
+  } catch (err) {
+    console.log("Connection error:");
+    console.error(err);
+  }
 }
 
 runMe();
-
-console.log(
-  "Continuing to do node things while the process runs at the same time..."
-);
