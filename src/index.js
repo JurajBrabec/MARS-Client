@@ -24,21 +24,21 @@ async function runMe() {
     const connection = await createConnection();
     try {
       const nbu = await netBackup(process.env.NBU_HOME);
-      let sum = await nbu.summary();
-      let res = await sum.toDatabase(connection, 1);
       console.log(chalk.blue(`Master Server: ${nbu.masterServer}`));
+      let res = await nbu.summary().toDatabase(connection, 1);
       console.log(res);
       res = await nbu.jobs().toDatabase(connection, 50);
       console.log(res);
       res = await nbu.slps().toDatabase(connection, 50);
-      //res = await nbu.slps().asObjects();
       console.log(res);
     } catch (err) {
+      debug(`error`);
       console.log("App error:");
       console.error(err);
     } finally {
       await connection.end();
       console.log("Connection closed");
+      debug(`closed`);
     }
   } catch (err) {
     console.log("Connection error:");

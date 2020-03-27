@@ -40,6 +40,7 @@ class CommandReadable {
     return this;
   };
   onError = err => {
+    debug(`Readable error!`);
     this._transform.end(err);
     return this;
   };

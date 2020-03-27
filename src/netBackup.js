@@ -1,4 +1,3 @@
-var debug = require("debug")("nbu");
 const { DelimitedTransform, LabeledTransform } = require("./streams");
 const { Command, CommandReadable } = require("./commands");
 
@@ -231,21 +230,12 @@ class NbstlTransform extends DelimitedTransform {
         const row = super.createRows(line, mainFields);
         rows.push(row);
       }
-      //      } else {
-      //        mainFields.map(field => {
-      //          let result = { ...field };
-      //          if (row[field.name] !== undefined) result.value = row[field.name];
-      //          return result;
-      //      });
-      //      rows.push(row);
-      //      }
     });
     return rows;
   }
 
   validateRow = row => {
     if (row.useFor === undefined) return false;
-    //    row.masterServer = this.masterServer;
     Object.entries(row).forEach(([key, value]) => {
       if (value == "*NULL*") row[key] = null;
       if (value == "NOW()")
