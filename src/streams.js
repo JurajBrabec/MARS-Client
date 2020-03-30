@@ -6,7 +6,7 @@ class TextWritable extends stream.Writable {
   constructor(params) {
     super();
     dw("init");
-    this.text = "";
+    this._text = "";
     if (dw.enabled) {
       this.on("close", () => dw("close"));
       this.on("drain", () => dw("drain"));
@@ -18,12 +18,12 @@ class TextWritable extends stream.Writable {
     }
   }
   _write(data, _, done) {
-    this.text += data;
+    this._text += data;
     done();
   }
   _final(done) {
     dw("final");
-    this.emit("result", this.text);
+    this.emit("result", this._text);
     done();
   }
 }
@@ -32,7 +32,7 @@ class ObjectWritable extends stream.Writable {
   constructor(params) {
     dw("init");
     super({ objectMode: true });
-    this.objects = [];
+    this._objects = [];
     if (dw.enabled) {
       this.on("close", () => dw("close"));
       this.on("drain", () => dw("drain"));
@@ -44,12 +44,12 @@ class ObjectWritable extends stream.Writable {
     }
   }
   _write(data, _, done) {
-    this.objects.push(data);
+    this._objects.push(data);
     done();
   }
   _final(done) {
     dw("final");
-    this.emit("result", this.objects);
+    this.emit("result", this._objects);
     done();
   }
 }
@@ -59,13 +59,11 @@ class MariaDbWritable extends stream.Writable {
     dw("init");
     super({ objectMode: true });
     this.params = params;
-    this.pool = pool;
-    this.batchSize = batchSize;
-    this.table = params.table;
-    this.fields = params.fields;
-    this.sql = null;
-    this.rows = [];
-    this.results = [];
+    this._pool = pool;
+    this._batchSize = batchSize;
+    this._sql = null;
+    this._rows = [];
+    this._results = [];
     if (dw.enabled) {
       this.on("close", () => dw("close"));
       this.on("drain", () => dw("drain"));
@@ -77,34 +75,28 @@ class MariaDbWritable extends stream.Writable {
     }
   }
   _write(data, _, done) {
-    this.rows.push(data);
-    if (this.rows.length >= this.batchSize) {
-      this.results.push(this.doSql());
-    }
+    this._rows.push(data);
+    if (this._rows.length >= this._batchSize) this.doSql();
     done();
   }
   _final(done) {
     dw("final");
-    if (this.rows.length > 0) this.results.push(this.doSql());
-    Promise.all(this.results)
-      .then(res => {
-        this.emit("result", res);
-      })
-      .catch(err => {
-        this.emit("result", err);
-      });
+    if (this._rows.length) this.doSql();
+    Promise.all(this._results)
+      .then(res => this.emit("result", res))
+      .catch(err => this.emit("result", err));
     done();
   }
   prepareSql(row) {
     const keys = Object.keys(row);
-    let sql = `INSERT INTO ${this.table} (`;
+    let sql = `INSERT INTO ${this.params.table} (`;
     sql += keys.map(key => `\`${key}\``).join(",");
     sql += ") VALUES (";
     sql += keys.map(key => `:${key}`).join(",");
     sql += ")";
     let updates = keys
       .filter(key => {
-        const field = this.fields.find(field => field.name == key);
+        const field = this.params.fields.find(field => field.name == key);
         return field && field.update == true;
       })
       .map(key => `\`${key}\`=:${key}`)
@@ -115,19 +107,22 @@ class MariaDbWritable extends stream.Writable {
   }
   doSql() {
     dw("sql");
-    const rows = this.rows.map(row => row);
-    this.rows = [];
-    if (this.sql === null) this.sql = this.prepareSql(rows[0]);
-    return new Promise((resolve, reject) => {
-      this.pool
-        .batch(this.sql, rows)
-        .then(res => {
-          resolve({ rows: res.affectedRows, warnings: res.warningStatus });
-        })
-        .catch(err => {
-          reject({ code: err.code, message: err.message });
-        });
-    });
+    let rows = [];
+    this._rows.forEach(row => rows.push({ ...row }));
+    this._rows = [];
+    if (this._sql === null) this._sql = this.prepareSql(rows[0]);
+    this._results.push(
+      new Promise((resolve, reject) => {
+        this._pool
+          .batch(this._sql, rows)
+          .then(res => {
+            resolve({ rows: res.affectedRows, warnings: res.warningStatus });
+          })
+          .catch(err => {
+            reject({ code: err.code, message: err.message });
+          });
+      })
+    );
   }
 }
 
@@ -135,15 +130,14 @@ class CommandTransform extends stream.Transform {
   constructor(params) {
     dt("init");
     super({ objectMode: true });
-    this.params = params;
-    this._encoding = "utf8";
-    this._delimiter =
+    params.delimiter =
       params.delimiter instanceof RegExp
         ? params.delimiter
         : new RegExp(params.delimiter);
+    this.params = params;
+    this._encoding = "utf8";
     this._buffer = "";
     this._first = true;
-    this.fields = params.fields;
     if (dt.enabled) {
       this.on("close", () => dt("close"));
       this.on("data", () => dt("data"));
@@ -164,8 +158,8 @@ class CommandTransform extends stream.Transform {
     } else {
       this._buffer += Buffer.from(chunk, encoding).toString(this._encoding);
     }
-    if (this._delimiter.test(this._buffer)) {
-      let sections = this._buffer.split(this._delimiter);
+    if (this.params.delimiter.test(this._buffer)) {
+      let sections = this._buffer.split(this.params.delimiter);
       this._buffer = sections.pop();
       sections
         .filter(section => section != "")
@@ -201,7 +195,7 @@ class CommandTransform extends stream.Transform {
   }
   createRows(section) {
     let row = {};
-    this.fields.forEach(field => {
+    this.params.fields.forEach(field => {
       row[field.name] = this.validateValue(field.value);
     });
     return row;
@@ -217,7 +211,7 @@ class CommandTransform extends stream.Transform {
 class LabeledTransform extends CommandTransform {
   createRows(section) {
     let row = super.createRows(section);
-    this.fields.forEach(field => {
+    this.params.fields.forEach(field => {
       let match =
         field.pattern instanceof RegExp ? field.pattern.exec(section) : false;
       if (match) row[field.name] = this.validateValue(match[1]);
@@ -245,7 +239,7 @@ class DelimitedTransform extends CommandTransform {
       section = section.replace(`\\${this._separator.source}`, placeHolder);
     const match = section.split(this._separator);
     let index = 0;
-    this.fields.forEach(field => {
+    this.params.fields.forEach(field => {
       if (index < match.length) {
         if (field.value === undefined) {
           const value = escape
@@ -265,10 +259,32 @@ class DelimitedTransform extends CommandTransform {
   }
 }
 
+class HeaderRowsDelimitedTransform extends DelimitedTransform {
+  createRows(section) {
+    let rows = [];
+    const bkp = [];
+    this.params.fields.forEach(field => bkp.push({ ...field }));
+    section.split(this.params.subSeparator).forEach((line, index) => {
+      const row = super.createRows(line);
+      if (index == 0) {
+        this.params.fields.map(field => {
+          if (row[field.name] !== undefined) field.value = row[field.name];
+          return field;
+        });
+      } else {
+        rows.push(row);
+      }
+    });
+    this.params.fields = bkp;
+    return rows;
+  }
+}
+
 module.exports = {
   TextWritable,
   ObjectWritable,
   MariaDbWritable,
   DelimitedTransform,
-  LabeledTransform
+  LabeledTransform,
+  HeaderRowsDelimitedTransform
 };

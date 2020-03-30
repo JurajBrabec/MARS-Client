@@ -1,13 +1,16 @@
 const dn = require("debug")("nbu");
-const { DelimitedTransform, LabeledTransform } = require("./streams");
+const {
+  DelimitedTransform,
+  LabeledTransform,
+  HeaderRowsDelimitedTransform
+} = require("./streams");
 const { Command, CommandReadable } = require("./commands");
 
-class NetBackup extends CommandReadable {
+class NetBackup extends Command {
   constructor(resolve, reject, path) {
     dn("init");
-    super({ path: path });
-    this.resolve = resolve;
-    this.reject = reject;
+    super(resolve, reject);
+    this.params = { path };
     this._masterServer = null;
     this.init();
   }
@@ -70,13 +73,13 @@ class NetBackup extends CommandReadable {
   }
   policies() {
     dn("policies");
-    return new BpplListCommand(this);
+    return new NetBackupCommand(this, BpplList);
   }
 }
 
 class NetBackupCommand extends CommandReadable {
   constructor(netBackup, params) {
-    dn("init");
+    dn("init command");
     params.path = netBackup.params.path;
     super(params);
     this.netBackup = netBackup;
@@ -115,39 +118,29 @@ class NetBackupDelimitedTransform extends DelimitedTransform {
     return result;
   }
 }
+class NetBackupHeaderRowsDelimitedTransform extends HeaderRowsDelimitedTransform {
+  constructor(netBackup, params) {
+    super(params);
+    this.netBackup = netBackup;
+  }
+  validateValue(value) {
+    let result = super.validateValue(value);
+    result = this.netBackup.validateValue(result);
+    return result;
+  }
+}
+
 class BpdbJobsSummaryTransform extends NetBackupLabeledTransform {
-  validateRow = row => {
+  validateRow(row) {
     if (!row.masterServer) return false;
     return row;
-  };
-}
-class NbstlTransform extends NetBackupDelimitedTransform {
-  createRows(section) {
-    let rows = [];
-    const backupFields = [];
-    this.fields.forEach(field => backupFields.push({ ...field }));
-    section
-      .split(/\r?\n\s*/m)
-      .filter(line => line != "")
-      .forEach((line, index) => {
-        if (index == 0) {
-          const row = super.createRows(line);
-          this.fields.map(field => {
-            if (row[field.name] !== undefined) field.value = row[field.name];
-            return field;
-          });
-        } else {
-          const row = super.createRows(line);
-          rows.push(row);
-        }
-      });
-    this.fields = backupFields;
-    return rows;
   }
-  validateRow = row => {
+}
+class NbstlTransform extends NetBackupHeaderRowsDelimitedTransform {
+  validateRow(row) {
     if (!row.useFor) return false;
     return row;
-  };
+  }
 }
 
 const BpdbJobsSummary = {
@@ -300,6 +293,7 @@ const Nbstl = {
   transform: NbstlTransform,
   delimiter: /^(?=[A-Za-z]+)/m,
   separator: /\s/,
+  subSeparator: /\r?\n\s*/m,
   table: "nbstl",
   fields: [
     { name: "masterServer", type: "string", value: "masterServer" },
@@ -350,109 +344,105 @@ const BpplClients = {
   ]
 };
 
-class BpplListCommand extends NetBackupCommand {
-  constructor(netBackup) {
-    const binary = "/bin/admincmd/bppllist";
-    const args = ["-allpolicies"];
-    super(netBackup, binary, args);
-    this.table = "bpppllist";
-    this.fields = [
-      { name: "class", type: "string", pattern: /^CLASS (.+)/m },
-      { name: "info", type: "string", pattern: /^INFO (.+)/m },
-      { name: "key", type: "string", pattern: /^KEY (.+)/m },
-      { name: "bcmd", type: "string", pattern: /^BCMD (.+)/m },
-      { name: "rcmd", type: "string", pattern: /^RCMD (.+)/m },
-      { name: "res", type: "string", pattern: /^RES (.+)/m },
-      { name: "pool", type: "string", pattern: /^POOL (.+)/m },
-      { name: "foe", type: "string", pattern: /^FOE (.+)/m },
-      { name: "shareGroup", type: "string", pattern: /^SHAREGROUP (.+)/m },
-      {
-        name: "dataClassification",
-        type: "string",
-        pattern: /^DATACLASSIFICATION (.+)/m
-      },
-      {
-        name: "applicationDefined",
-        type: "string",
-        pattern: /^APPLICATIONDEFINED (.+)/m
-      },
-      { name: "include", type: "string", pattern: /^INCLUDE (.+)/gm }
-      //      { name: "client", type: "string", pattern: /^CLIENT (.+)/gm },
-      //      { name: "sched", type: "string", pattern: /^(SCHED.+)/gm }
-    ];
-    this.policyTable = "bppllist_policies";
-    this.policyFields = [
-      { name: "masterServer", type: "string", value: this.masterServer },
-      { name: "name", type: "string" },
-      { name: "internalname", type: "string" },
-      { name: "options", type: "string", update: true },
-      { name: "protocolversion", type: "string", update: true },
-      { name: "timeZoneOffset", type: "string" },
-      { name: "auditReason", type: "string" },
-      { name: "policyType", type: "string" },
-      { name: "followNfsMount", type: "string" },
-      { name: "clientCompress", type: "string" },
-      { name: "jobPriority", type: "string" },
-      { name: "proxyClient", type: "string" },
-      { name: "clientEncrypt", type: "string" },
-      { name: "dr", type: "string" },
-      { name: "maxJobsPerClient", type: "string" },
-      { name: "crossMountPoints", type: "string" },
-      { name: "maxFragSize", type: "string" },
-      { name: "eactive", type: "string" },
-      { name: "tir", type: "string" },
-      { name: "blockLevelIncrementals", type: "string" },
-      { name: "individualFileRestore", type: "string" },
-      { name: "streaming", type: "string" },
-      { name: "frozenImage", type: "string" },
-      { name: "backupCopy", type: "string" },
-      { name: "effectiveDate", type: "string" },
-      { name: "classId", type: "string" },
-      { name: "backupCopies", type: "string" },
-      { name: "checkPoints", type: "string" },
-      { name: "checkPintInterval", type: "string" },
-      { name: "unused", type: "string" },
-      { name: "instanceRecovery", type: "string" },
-      { name: "offHostBackup", type: "string" },
-      { name: "alternateClient", type: "string" },
-      { name: "dataMover", type: "string" },
-      { name: "dataMoverType", type: "string" },
-      { name: "bmr", type: "string" },
-      { name: "lifeCycle", type: "string" },
-      { name: "granularRestore", type: "string" },
-      { name: "jobSubType", type: "string" },
-      { name: "vm", type: "string" },
-      { name: "ignoreCsDedup", type: "string" },
-      { name: "exchangeDbSource", type: "string" },
-      { name: "accelerator", type: "string" },
-      { name: "granularRestore1", type: "string" },
-      { name: "discoveryLifeTime", type: "string" },
-      { name: "fastBackup", type: "string" },
-      { name: "key", type: "string" },
-      { name: "res", type: "string" },
-      { name: "pool", type: "string" },
-      { name: "foe", type: "string" },
-      { name: "shareGroup", type: "string" },
-      { name: "dataClassification", type: "string" },
-      { name: "hypervServer", type: "string" },
-      { name: "names", type: "string" },
-      { name: "bcmd", type: "string" },
-      { name: "rcmd", type: "string" },
-      { name: "applicationDefined", type: "string" },
-      { name: "oraBkupDataFileArgs", type: "string" },
-      { name: "oraBkupArchLogArgs", type: "string" },
-      { name: "includes", type: "string" },
-      {
-        name: "updated",
-        type: "datetime",
-        value: netBackup.now(),
-        update: true
-      },
-      { name: "obsoleted", type: "datetime", value: null, update: true }
-    ];
-  }
-  transform = () => new BpplListTransform(/^(?=CLASS)/m);
-}
+const BpplList = {
+  binary: "bin/admincmd/bppllist",
+  args: ["-allpolicies"],
+  transform: NetBackupLabeledTransform,
+  delimiter: /^(?=CLASS)/m,
+  separator: /\s/,
+  table: "bppllist_policies",
+  fields: [
+    { name: "class", type: "string", pattern: /^CLASS (.+)/m },
+    { name: "info", type: "string", pattern: /^INFO (.+)/m },
+    { name: "key", type: "string", pattern: /^KEY (.+)/m },
+    { name: "bcmd", type: "string", pattern: /^BCMD (.+)/m },
+    { name: "rcmd", type: "string", pattern: /^RCMD (.+)/m },
+    { name: "res", type: "string", pattern: /^RES (.+)/m },
+    { name: "pool", type: "string", pattern: /^POOL (.+)/m },
+    { name: "foe", type: "string", pattern: /^FOE (.+)/m },
+    { name: "shareGroup", type: "string", pattern: /^SHAREGROUP (.+)/m },
+    {
+      name: "dataClassification",
+      type: "string",
+      pattern: /^DATACLASSIFICATION (.+)/m
+    },
+    {
+      name: "applicationDefined",
+      type: "string",
+      pattern: /^APPLICATIONDEFINED (.+)/m
+    },
+    { name: "include", type: "string", pattern: /^INCLUDE (.+)/gm },
+    { name: "client", type: "string", pattern: /^CLIENT (.+)/gm },
+    { name: "sched", type: "string", pattern: /^(SCHED.+)/gm }
+  ]
+};
+const BpplListPolicies = {
+  policyTable: "bppllist_policies",
+  policyFields: [
+    { name: "masterServer", type: "string", value: "masterServer" },
+    { name: "name", type: "string" },
+    { name: "internalname", type: "string" },
+    { name: "options", type: "string", update: true },
+    { name: "protocolversion", type: "string", update: true },
+    { name: "timeZoneOffset", type: "string" },
+    { name: "auditReason", type: "string" },
+    { name: "policyType", type: "string" },
+    { name: "followNfsMount", type: "string" },
+    { name: "clientCompress", type: "string" },
+    { name: "jobPriority", type: "string" },
+    { name: "proxyClient", type: "string" },
+    { name: "clientEncrypt", type: "string" },
+    { name: "dr", type: "string" },
+    { name: "maxJobsPerClient", type: "string" },
+    { name: "crossMountPoints", type: "string" },
+    { name: "maxFragSize", type: "string" },
+    { name: "eactive", type: "string" },
+    { name: "tir", type: "string" },
+    { name: "blockLevelIncrementals", type: "string" },
+    { name: "individualFileRestore", type: "string" },
+    { name: "streaming", type: "string" },
+    { name: "frozenImage", type: "string" },
+    { name: "backupCopy", type: "string" },
+    { name: "effectiveDate", type: "string" },
+    { name: "classId", type: "string" },
+    { name: "backupCopies", type: "string" },
+    { name: "checkPoints", type: "string" },
+    { name: "checkPintInterval", type: "string" },
+    { name: "unused", type: "string" },
+    { name: "instanceRecovery", type: "string" },
+    { name: "offHostBackup", type: "string" },
+    { name: "alternateClient", type: "string" },
+    { name: "dataMover", type: "string" },
+    { name: "dataMoverType", type: "string" },
+    { name: "bmr", type: "string" },
+    { name: "lifeCycle", type: "string" },
+    { name: "granularRestore", type: "string" },
+    { name: "jobSubType", type: "string" },
+    { name: "vm", type: "string" },
+    { name: "ignoreCsDedup", type: "string" },
+    { name: "exchangeDbSource", type: "string" },
+    { name: "accelerator", type: "string" },
+    { name: "granularRestore1", type: "string" },
+    { name: "discoveryLifeTime", type: "string" },
+    { name: "fastBackup", type: "string" },
+    { name: "key", type: "string" },
+    { name: "res", type: "string" },
+    { name: "pool", type: "string" },
+    { name: "foe", type: "string" },
+    { name: "shareGroup", type: "string" },
+    { name: "dataClassification", type: "string" },
+    { name: "hypervServer", type: "string" },
+    { name: "names", type: "string" },
+    { name: "bcmd", type: "string" },
+    { name: "rcmd", type: "string" },
+    { name: "applicationDefined", type: "string" },
+    { name: "oraBkupDataFileArgs", type: "string" },
+    { name: "oraBkupArchLogArgs", type: "string" },
+    { name: "includes", type: "string" },
+    { name: "updated", type: "datetime", value: "NOW()", update: true },
+    { name: "obsoleted", type: "datetime", value: null, update: true }
+  ]
+};
 
 function netBackup(path) {
   return new Promise((resolve, reject) => new NetBackup(resolve, reject, path));

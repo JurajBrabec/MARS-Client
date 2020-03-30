@@ -1,4 +1,4 @@
-const dr = require("debug")("readable");
+const dc = require("debug")("cmd");
 const EventEmitter = require("events");
 const { execFile } = require("child_process");
 const { TextWritable, ObjectWritable, MariaDbWritable } = require("./streams");
@@ -6,23 +6,33 @@ const { DelimitedTransform, LabeledTransform } = require("./streams");
 
 class Command extends EventEmitter {
   constructor(resolve, reject) {
+    dc("init");
     super();
-    this.resolve = resolve;
-    this.reject = reject;
+    this._resolve = resolve;
+    this._reject = reject;
+    if (dc.enabled) {
+      this.on("close", () => dc("close"));
+      this.on("data", () => dc("data"));
+      this.on("end", () => dc("end"));
+      this.on("error", () => dc("error"));
+      this.on("result", result => dc("result:" + result.length));
+    }
   }
   throwError(err) {
-    if (this.reject) {
-      this.resolve = null;
-      process.nextTick(this.reject, err);
-      this.reject = null;
+    dc("error");
+    if (this._reject) {
+      this._resolve = null;
+      process.nextTick(this._reject, err);
+      this._reject = null;
     }
     this.emit("end", err);
   }
   successEnd(val) {
-    if (this.resolve) {
-      this.reject = null;
-      process.nextTick(this.resolve, val);
-      this.resolve = null;
+    dc("success");
+    if (this._resolve) {
+      this._reject = null;
+      process.nextTick(this._resolve, val);
+      this._resolve = null;
       this.emit("end");
     }
   }
@@ -30,18 +40,10 @@ class Command extends EventEmitter {
 
 class CommandReadable extends Command {
   constructor(params) {
-    dr("init");
     super();
-    this.encoding = "utf8";
     this.params = params;
-    this.stream = null;
-    if (dr.enabled) {
-      this.on("close", () => dr("close"));
-      this.on("data", () => dr("data"));
-      this.on("end", () => dr("end"));
-      this.on("error", () => dr("error"));
-      this.on("result", result => dr("result:" + result.length));
-    }
+    this._encoding = "utf8";
+    this._stream = null;
   }
   onProcessError = error => {
     this.throwError(error);
@@ -56,7 +58,7 @@ class CommandReadable extends Command {
     this.successEnd(result);
   };
   addStream(stream) {
-    this.stream = stream
+    this._stream = stream
       .on("error", this.onStreamError)
       .on("result", this.onStreamResult);
     return this;
@@ -88,21 +90,21 @@ class CommandReadable extends Command {
   getResults() {
     const _this = this;
     return new Promise(function(resolve, reject) {
-      _this.resolve = resolve;
-      _this.reject = reject;
+      _this._resolve = resolve;
+      _this._reject = reject;
       const command = _this.params.path + "/" + _this.params.binary + ".exe";
       const process = execFile(command, _this.params.args).on(
         "error",
         _this.onProcessError
       );
       process.stderr
-        .setEncoding(_this.encoding)
+        .setEncoding(_this._encoding)
         .on("error", _this.onReadableError)
         .pipe(process.stdout);
       process.stdout
-        .setEncoding(_this.encoding)
+        .setEncoding(_this._encoding)
         .on("error", _this.onReadableError)
-        .pipe(_this.stream);
+        .pipe(_this._stream);
     });
   }
 }
