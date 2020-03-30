@@ -3,7 +3,7 @@ var debug = require("debug")("app");
 const commander = require("commander");
 const chalk = require("chalk");
 const { netBackup } = require("./netBackup");
-const { createConnection } = require("./db");
+const { pool } = require("./db");
 
 commander
   .version("v0.0.1")
@@ -21,28 +21,27 @@ debug("start");
 
 async function runMe() {
   try {
-    const connection = await createConnection();
-    try {
-      const nbu = await netBackup(process.env.NBU_HOME);
-      console.log(chalk.blue(`Master Server: ${nbu.masterServer}`));
-      let res = await nbu.summary().toDatabase(connection, 1);
-      console.log(res);
-      res = await nbu.jobs().toDatabase(connection, 50);
-      console.log(res);
-      res = await nbu.slps().toDatabase(connection, 50);
-      console.log(res);
-    } catch (err) {
-      debug(`error`);
-      console.log("App error:");
-      console.error(err);
-    } finally {
-      await connection.end();
-      console.log("Connection closed");
-      debug(`closed`);
-    }
+    const nbu = await netBackup("D:/Veritas/NetBackup");
+    let res;
+    console.log(nbu.masterServer);
+    res = await nbu.summary().toDatabase(pool, 1);
+    console.log("Results:");
+    console.log(res);
+    res = await nbu.jobs().toDatabase(pool, 100);
+    console.log("Results:");
+    console.log(res);
+    res = await nbu.slps().toDatabase(pool, 100);
+    console.log("Results:");
+    console.log(res);
+    res = await nbu.clients().toDatabase(pool, 100);
+    console.log("Results:");
+    console.log(res);
   } catch (err) {
-    console.log("Connection error:");
-    console.error(err);
+    console.log("ERROR:");
+    console.log(err);
+  } finally {
+    await pool.end();
+    console.log("Pool closed");
   }
 }
 

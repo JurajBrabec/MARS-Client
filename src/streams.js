@@ -1,73 +1,103 @@
-var debug = require("debug")("stream");
+const dw = require("debug")("writable");
+const dt = require("debug")("transform");
 const stream = require("stream");
 
 class TextWritable extends stream.Writable {
-  constructor() {
+  constructor(params) {
     super();
-    this.receivedItems = 0;
+    dw("init");
     this.text = "";
-    this.on("finish", () => {
-      debug(
-        `Writable received ${this.receivedItems} items (${this.text.length}b)`
-      );
-      this.resolve(this.text);
-    });
+    if (dw.enabled) {
+      this.on("close", () => dw("close"));
+      this.on("drain", () => dw("drain"));
+      this.on("error", () => dw("error"));
+      this.on("finish", () => dw("finish"));
+      this.on("pipe", () => dw("pipe"));
+      this.on("unpipe", () => dw("unpipe"));
+      this.on("result", result => dw("result:" + result.length));
+    }
   }
-
   _write(data, _, done) {
-    this.receivedItems++;
     this.text += data;
+    done();
+  }
+  _final(done) {
+    dw("final");
+    this.emit("result", this.text);
     done();
   }
 }
 
 class ObjectWritable extends stream.Writable {
-  constructor() {
+  constructor(params) {
+    dw("init");
     super({ objectMode: true });
-    this.items = [];
-    this.on("finish", () => {
-      debug(`Writable received ${this.items.length} items`);
-      if (this.items.length == 1) this.items = this.items[0];
-      this.resolve(this.items);
-    });
+    this.objects = [];
+    if (dw.enabled) {
+      this.on("close", () => dw("close"));
+      this.on("drain", () => dw("drain"));
+      this.on("error", () => dw("error"));
+      this.on("finish", () => dw("finish"));
+      this.on("pipe", () => dw("pipe"));
+      this.on("unpipe", () => dw("unpipe"));
+      this.on("result", result => dw("result:" + result.length));
+    }
   }
   _write(data, _, done) {
-    this.items.push(data);
+    this.objects.push(data);
+    done();
+  }
+  _final(done) {
+    dw("final");
+    this.emit("result", this.objects);
     done();
   }
 }
+
 class MariaDbWritable extends stream.Writable {
-  constructor(connection, tableName, fields = [], batchSize = 10) {
+  constructor(params, pool, batchSize = 10) {
+    dw("init");
     super({ objectMode: true });
-    this.connection = connection;
-    this.tableName = tableName;
-    this.fields = fields;
+    this.params = params;
+    this.pool = pool;
     this.batchSize = batchSize;
+    this.table = params.table;
+    this.fields = params.fields;
     this.sql = null;
-    this.items = [];
-    this.promises = [];
-    this.receivedItems = 0;
-    this.sqlCount = 0;
-    this.promises.push(
-      new Promise(resolve => {
-        this.finished = resolve;
+    this.rows = [];
+    this.results = [];
+    if (dw.enabled) {
+      this.on("close", () => dw("close"));
+      this.on("drain", () => dw("drain"));
+      this.on("error", () => dw("error"));
+      this.on("finish", () => dw("finish"));
+      this.on("pipe", () => dw("pipe"));
+      this.on("unpipe", () => dw("unpipe"));
+      this.on("result", result => dw("result:" + result.length));
+    }
+  }
+  _write(data, _, done) {
+    this.rows.push(data);
+    if (this.rows.length >= this.batchSize) {
+      this.results.push(this.doSql());
+    }
+    done();
+  }
+  _final(done) {
+    dw("final");
+    if (this.rows.length > 0) this.results.push(this.doSql());
+    Promise.all(this.results)
+      .then(res => {
+        this.emit("result", res);
       })
-    );
-    this.on("finish", () => {
-      if (this.items.length > 0) this.promises.push(this.doSql());
-      this.finished();
-      this.promises.shift();
-      debug(
-        `Writable received ${this.receivedItems} items (${this.sqlCount} SQL's)`
-      );
-      Promise.all(this.promises)
-        .then(res => this.resolve(res))
-        .catch(err => this.reject(err));
-    });
+      .catch(err => {
+        this.emit("result", err);
+      });
+    done();
   }
   prepareSql(row) {
     const keys = Object.keys(row);
-    let sql = `INSERT INTO ${this.tableName} (`;
+    let sql = `INSERT INTO ${this.table} (`;
     sql += keys.map(key => `\`${key}\``).join(",");
     sql += ") VALUES (";
     sql += keys.map(key => `:${key}`).join(",");
@@ -75,7 +105,7 @@ class MariaDbWritable extends stream.Writable {
     let updates = keys
       .filter(key => {
         const field = this.fields.find(field => field.name == key);
-        return field !== undefined && field.update == true;
+        return field && field.update == true;
       })
       .map(key => `\`${key}\`=:${key}`)
       .join(",");
@@ -84,54 +114,48 @@ class MariaDbWritable extends stream.Writable {
     return sql;
   }
   doSql() {
-    let res = new Promise((resolve, reject) => {
-      try {
-        let data = this.items.map(item => item);
-        this.items = [];
-        if (this.sql === null) this.sql = this.prepareSql(data[0]);
-        this.sqlCount++;
-        this.connection
-          .batch(this.sql, data)
-          .then(res => {
-            resolve({ rows: res.affectedRows });
-          })
-          .catch(err => {
-            resolve({ code: err.code, message: err.message });
-          });
-      } catch (err) {
-        reject({ code: err.code, message: err.message });
-      }
+    dw("sql");
+    const rows = this.rows.map(row => row);
+    this.rows = [];
+    if (this.sql === null) this.sql = this.prepareSql(rows[0]);
+    return new Promise((resolve, reject) => {
+      this.pool
+        .batch(this.sql, rows)
+        .then(res => {
+          resolve({ rows: res.affectedRows, warnings: res.warningStatus });
+        })
+        .catch(err => {
+          reject({ code: err.code, message: err.message });
+        });
     });
-    return res;
-  }
-  _write(data, _, done) {
-    this.receivedItems++;
-    this.items.push(data);
-    if (this.items.length >= this.batchSize) this.promises.push(this.doSql());
-    done();
   }
 }
 
 class CommandTransform extends stream.Transform {
-  constructor(delimiter = /\r?\n/) {
+  constructor(params) {
+    dt("init");
     super({ objectMode: true });
-    this._delimiter =
-      delimiter instanceof RegExp ? delimiter : new RegExp(delimiter);
+    this.params = params;
     this._encoding = "utf8";
+    this._delimiter =
+      params.delimiter instanceof RegExp
+        ? params.delimiter
+        : new RegExp(params.delimiter);
     this._buffer = "";
     this._first = true;
-    this.fields = [];
-    this.receivedItems = 0;
-    this.receivedBytes = 0;
-    this.sentItems = 0;
-    this.on("finish", () => {
-      debug(
-        `Transform received/sent ${this.receivedItems} (${this.receivedBytes}b)/${this.sentItems} items`
-      );
-      if (this.resolve) this.resolve(this);
-    });
+    this.fields = params.fields;
+    if (dt.enabled) {
+      this.on("close", () => dt("close"));
+      this.on("data", () => dt("data"));
+      this.on("end", () => dt("end"));
+      this.on("error", () => dt("error"));
+      this.on("drain", () => dt("drain"));
+      this.on("finish", () => dt("finish"));
+      this.on("pipe", () => dt("pipe"));
+      this.on("unpipe", () => dt("unpipe"));
+      this.on("result", result => dt("result:" + result.length));
+    }
   }
-
   _transform(chunk, encoding, done) {
     if (encoding === "buffer") {
       this._buffer += chunk.toString(this._encoding);
@@ -140,18 +164,32 @@ class CommandTransform extends stream.Transform {
     } else {
       this._buffer += Buffer.from(chunk, encoding).toString(this._encoding);
     }
-    this.receivedItems++;
-    this.receivedBytes += chunk.length;
     if (this._delimiter.test(this._buffer)) {
       let sections = this._buffer.split(this._delimiter);
       this._buffer = sections.pop();
-      sections.forEach(section => this.parseSection(section), this);
+      sections
+        .filter(section => section != "")
+        .forEach(section => this.parseSection(section), this);
     }
     done();
   }
   _flush(done) {
-    this.parseSection(this._buffer);
+    dt("flush");
+    if (this._buffer !== "") this.parseSection(this._buffer);
     done();
+  }
+  onStreamError = error => {
+    this.emit("error", error);
+  };
+  onStreamResult = result => {
+    this.emit("result", result);
+  };
+  addStream(stream) {
+    this.stream = stream
+      .on("error", this.onStreamError)
+      .on("result", this.onStreamResult);
+    this.pipe(this.stream);
+    return this;
   }
   parseSection(section) {
     let rows = this.createRows(section);
@@ -159,52 +197,19 @@ class CommandTransform extends stream.Transform {
     rows
       .map(row => this.validateRow(row))
       .filter(row => row != false)
-      .forEach(row => {
-        this.sentItems++;
-        this.push(row);
-      });
+      .forEach(row => this.push(row));
   }
   createRows(section) {
     let row = {};
     this.fields.forEach(field => {
-      row[field.name] = field.value;
+      row[field.name] = this.validateValue(field.value);
     });
     return row;
+  }
+  validateValue(value) {
+    return value;
   }
   validateRow(row) {
-    return row;
-  }
-}
-
-class DelimitedTransform extends CommandTransform {
-  constructor(delimiter = /\r?\n/, separator = /,/) {
-    super(delimiter);
-    this.separator =
-      separator instanceof RegExp ? separator : new RegExp(separator, "g");
-  }
-  createRows(section, fields = this.fields) {
-    const placeHolder = "~^~";
-    const row = super.createRows(section);
-    const escape = new RegExp(`\\${this.separator.source}`, "g").test(section);
-    if (escape)
-      section = section.replace(`\\${this.separator.source}`, placeHolder);
-    const match = section.split(this.separator);
-    let index = 0;
-    fields.forEach(field => {
-      if (index < match.length) {
-        if (field.value === undefined) {
-          row[field.name] =
-            match[index] == ""
-              ? null
-              : escape
-              ? match[index].replace(placeHolder, `\\${this.separator.source}`)
-              : match[index];
-          index++;
-        } else {
-          row[field.name] = field.value;
-        }
-      }
-    });
     return row;
   }
 }
@@ -215,9 +220,48 @@ class LabeledTransform extends CommandTransform {
     this.fields.forEach(field => {
       let match =
         field.pattern instanceof RegExp ? field.pattern.exec(section) : false;
-      if (match) row[field.name] = match[1] == "" ? null : match[1];
+      if (match) row[field.name] = this.validateValue(match[1]);
     });
     return row;
+  }
+  validateValue(value) {
+    return value == "" ? null : value;
+  }
+}
+
+class DelimitedTransform extends CommandTransform {
+  constructor(params) {
+    super(params);
+    this._separator =
+      params.separator instanceof RegExp
+        ? params.separator
+        : new RegExp(params.separator, "g");
+  }
+  createRows(section) {
+    const row = super.createRows(section);
+    const placeHolder = "~^~";
+    const escape = new RegExp(`\\${this._separator.source}`, "g").test(section);
+    if (escape)
+      section = section.replace(`\\${this._separator.source}`, placeHolder);
+    const match = section.split(this._separator);
+    let index = 0;
+    this.fields.forEach(field => {
+      if (index < match.length) {
+        if (field.value === undefined) {
+          const value = escape
+            ? match[index].replace(placeHolder, `\\${this._separator.source}`)
+            : match[index];
+          row[field.name] = this.validateValue(value);
+          index++;
+        } else {
+          row[field.name] = this.validateValue(field.value);
+        }
+      }
+    });
+    return row;
+  }
+  validateValue(value) {
+    return value == "" ? null : value;
   }
 }
 

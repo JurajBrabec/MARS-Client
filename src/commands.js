@@ -1,7 +1,8 @@
-var debug = require("debug")("command");
+const dr = require("debug")("readable");
 const EventEmitter = require("events");
 const { execFile } = require("child_process");
 const { TextWritable, ObjectWritable, MariaDbWritable } = require("./streams");
+const { DelimitedTransform, LabeledTransform } = require("./streams");
 
 class Command extends EventEmitter {
   constructor(resolve, reject) {
@@ -27,68 +28,81 @@ class Command extends EventEmitter {
   }
 }
 
-class CommandReadable {
-  constructor(path, cmd, args) {
-    this.params = { path, cmd, args };
-    this._transform = null;
-    this._writable = null;
-    this._process = null;
-    this.sentItems = 0;
+class CommandReadable extends Command {
+  constructor(params) {
+    dr("init");
+    super();
+    this.encoding = "utf8";
+    this.params = params;
+    this.stream = null;
+    if (dr.enabled) {
+      this.on("close", () => dr("close"));
+      this.on("data", () => dr("data"));
+      this.on("end", () => dr("end"));
+      this.on("error", () => dr("error"));
+      this.on("result", result => dr("result:" + result.length));
+    }
   }
-  onData = data => {
-    this.sentItems++;
-    return this;
+  onProcessError = error => {
+    this.throwError(error);
   };
-  onError = err => {
-    debug(`Readable error!`);
-    this._transform.end(err);
-    return this;
+  onReadableError = error => {
+    this.throwError(error);
   };
-  onClose = exitCode => {
-    debug(`Readable sent ${this.sentItems} items`);
-    return this;
+  onStreamError = error => {
+    this.throwError(error);
   };
-
-  transform = () => {};
-
+  onStreamResult = result => {
+    this.successEnd(result);
+  };
+  addStream(stream) {
+    this.stream = stream
+      .on("error", this.onStreamError)
+      .on("result", this.onStreamResult);
+    return this;
+  }
   asText() {
-    this._transform = new TextWritable();
-    return this.execute();
+    this.addStream(new TextWritable(this.params));
+    return this.getResults();
+  }
+  getTransform(params) {
+    const TransformType = this.params.separator
+      ? DelimitedTransform
+      : LabeledTransform;
+    return new TransformType(params);
   }
   asObjects() {
-    this._transform = this.transform();
-    this._writable = new ObjectWritable();
-    return this.execute();
-  }
-  toDatabase(connection, batchSize) {
-    this._transform = this.transform();
-    this._writable = new MariaDbWritable(
-      connection,
-      this.table,
-      this.fields,
-      batchSize
+    this.addStream(
+      this.getTransform(this.params).addStream(new ObjectWritable(this.params))
     );
-    return this.execute();
+    return this.getResults();
   }
-  execute() {
-    let result;
-    const command = this.params.path + "\\" + this.params.cmd + ".exe";
-    this._process = execFile(command, this.params.args)
-      .on("error", this.onError)
-      .on("close", this.onClose);
-    const encoding = "utf8";
-    this._transform.on("error", this.onError).on("data", this.onData);
-    this._transform.fields = this.fields;
-    this._process.stdout.setEncoding(encoding).pipe(this._transform);
-    this._process.stderr.setEncoding(encoding).pipe(this._transform);
-    result = this._transform;
-    if (this._writable) {
-      this._transform.pipe(this._writable);
-      result = this._writable;
-    }
+  toDatabase(pool, batchSize) {
+    this.addStream(
+      this.getTransform(this.params).addStream(
+        new MariaDbWritable(this.params, pool, batchSize)
+      )
+    );
+    return this.getResults();
+  }
+  getResults() {
+    const _this = this;
     return new Promise(function(resolve, reject) {
-      result.resolve = resolve;
-      result.reject = reject;
+      _this.resolve = resolve;
+      _this.reject = reject;
+      const command = _this.params.path + "/" + _this.params.binary + ".exe";
+      const process = execFile(command, _this.params.args).on(
+        "error",
+        _this.onProcessError
+      );
+      process.stderr
+        .setEncoding(_this.encoding)
+        .on("error", _this.onReadableError)
+        .pipe(process.stdout);
+      process.stdout
+        .setEncoding(_this.encoding)
+        .on("error", _this.onReadableError)
+        .pipe(_this.stream);
     });
   }
 }

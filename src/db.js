@@ -11,8 +11,5 @@ const params = {
   socketTimeout: 5000
 };
 
-function createConnection() {
-  return mariadb.createConnection(params);
-}
-//pool = mariadb.createPool(params);
-module.exports = { createConnection };
+pool = mariadb.createPool(params);
+module.exports = { pool };
