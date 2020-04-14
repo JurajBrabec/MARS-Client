@@ -38,7 +38,6 @@ async function runMe() {
     console.log("Results:");
     console.log(res);
  */
-
     res = await nbu.policies().asObjects();
     console.log("Results:");
     console.log(res);

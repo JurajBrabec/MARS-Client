@@ -4,6 +4,7 @@ const {
   LabeledTransform,
   HeaderRowsDelimitedTransform
 } = require("./streams");
+const { TextWritable, ObjectWritable, MariaDbWritable } = require("./streams");
 const { Command, CommandReadable } = require("./commands");
 
 class NetBackup extends Command {
@@ -96,6 +97,11 @@ class NetBackupCommand extends CommandReadable {
   }
 }
 
+class BpplListCommand extends NetBackupCommand {
+  constructor(netBackup, params) {
+    super(netBackup, params);
+  }
+}
 class NetBackupLabeledTransform extends LabeledTransform {
   constructor(netBackup, params) {
     super(params);
@@ -140,6 +146,35 @@ class NbstlTransform extends NetBackupHeaderRowsDelimitedTransform {
   validateRow(row) {
     if (!row.useFor) return false;
     return row;
+  }
+}
+class BpplListTransform extends NetBackupLabeledTransform {
+  constructor(netBackup, params) {
+    super(netBackup, params);
+    this._policies = new NetBackupDelimitedTransform(
+      netBackup,
+      BpplListPolicies
+    );
+    this._clients = new NetBackupDelimitedTransform(
+      netBackup,
+      BpplListPolicies
+    );
+    this._schedules = new NetBackupDelimitedTransform(
+      netBackup,
+      BpplListPolicies
+    );
+  }
+  createRows(section) {
+    const row = super.createRows(section);
+    let policiesSection = "";
+    Object.keys(row)
+      .filter(field => field != "client" && field != "sched")
+      .forEach(field => (policiesSection += row[field] + " "));
+    const newRow1 = this._policies.createRows(policiesSection);
+    const newRow2 = this._clients.createRows(row.client);
+    const newRow3 = this._schedules.createRows(row.sched);
+    //    policies.addStream(new ObjectWritable(BpplListPolicies));
+    return newRow1;
   }
 }
 
@@ -347,7 +382,8 @@ const BpplClients = {
 const BpplList = {
   binary: "bin/admincmd/bppllist",
   args: ["-allpolicies"],
-  transform: NetBackupLabeledTransform,
+  //  transform: NetBackupLabeledTransform,
+  transform: BpplListTransform,
   delimiter: /^(?=CLASS)/m,
   separator: /\s/,
   table: "bppllist_policies",
@@ -377,8 +413,11 @@ const BpplList = {
   ]
 };
 const BpplListPolicies = {
-  policyTable: "bppllist_policies",
-  policyFields: [
+  transform: NetBackupDelimitedTransform,
+  delimiter: /^(?=CLASS)/m,
+  separator: /\s/,
+  table: "bppllist_policies",
+  fields: [
     { name: "masterServer", type: "string", value: "masterServer" },
     { name: "name", type: "string" },
     { name: "internalname", type: "string" },

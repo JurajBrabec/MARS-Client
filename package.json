@@ -1,11 +1,12 @@
 {
-  "name": "client",
+  "name": "mars",
   "version": "1.0.0",
   "description": "MARS client",
-  "main": "src/index.js",
+  "main": "./bin/mars.js",
+  "bin": "./bin/mars.js",
   "scripts": {
-    "test": "node src/index.js",
-    "debug": "node --inspect-brk src/index.js"
+    "test": "node ./bin/mars.js",
+    "debug": "node --inspect-brk ./bin/mars.js"
   },
   "author": "Juraj Brabec",
   "license": "ISC",
