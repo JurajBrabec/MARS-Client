@@ -18,7 +18,7 @@ module.exports = policies;
 async function test() {
   try {
     await nbu.init();
-    const result = await nbu.policies().toDatabase(1);
+    const result = await nbu.policies().asObjects(1);
     //    console.dir(result);
     console.log(util.inspect(result, false, null, true));
   } catch (err) {
@@ -26,4 +26,4 @@ async function test() {
   }
 }
 
-test();
+//test();
