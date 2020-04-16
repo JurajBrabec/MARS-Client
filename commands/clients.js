@@ -1,5 +1,5 @@
 const util = require("util");
-const { nbu } = require("../lib/NetBackup");
+const { nbu } = require("../lib/netBackup");
 
 const clients = {
   async read() {

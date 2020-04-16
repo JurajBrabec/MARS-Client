@@ -1,5 +1,5 @@
 const util = require("util");
-const { nbu } = require("../lib/NetBackup");
+const { nbu } = require("../lib/netBackup");
 
 const policies = {
   async read() {
@@ -18,9 +18,9 @@ module.exports = policies;
 async function test() {
   try {
     await nbu.init();
-    const result = await nbu.policies().asObjects(1);
-    console.dir(result);
-    //    console.log(util.inspect(result, false, null, true));
+    const result = await nbu.policies().toDatabase(1);
+    //    console.dir(result);
+    console.log(util.inspect(result, false, null, true));
   } catch (err) {
     console.log("Error: " + err.message);
   }
