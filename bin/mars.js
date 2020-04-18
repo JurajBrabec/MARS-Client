@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-const commander = require("commander");
+const program = require("commander");
 const pkg = require("../package.json");
 
-commander
-  .version(pkg.version)
+program
+  .version(pkg.version, "-v, --version")
   .description(pkg.description)
-  .command("read", "Reading info")
-  .command("write", "Writing info")
-  .option("-d, --debug", "Debug mode")
+  .command("read <task>", "reading info")
+  .command("write", "writing info")
+  .option("-d, --debug", "debug mode")
   .parse(process.argv);

@@ -1,20 +1,20 @@
-const commander = require("commander");
+const program = require("commander");
 const summary = require("../commands/summary");
 const jobs = require("../commands/jobs");
 const slps = require("../commands/slps");
 const clients = require("../commands/clients");
 const policies = require("../commands/policies");
 
-commander.command("summary").description("Read summary").action(readSummary);
-commander
+program.command("summary").description("Read summary").action(readSummary);
+program
   .command("jobs")
   .description("Read jobs")
   .option("--days <days>", "Days to read", 7)
   .action(readJobs);
-commander.command("slps").description("Read SLP's").action(readSlps);
-commander.command("clients").description("Read clients").action(readClients);
-commander.command("policies").description("Read policies").action(readPolicies);
-commander.parse(process.argv);
+program.command("slps").description("Read SLP's").action(readSlps);
+program.command("clients").description("Read clients").action(readClients);
+program.command("policies").description("Read policies").action(readPolicies);
+program.parse(process.argv);
 
 async function readSummary() {
   try {
