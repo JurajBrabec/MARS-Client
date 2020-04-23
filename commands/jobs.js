@@ -9,6 +9,12 @@ const jobs = {
       const result = await nbu.jobs(days).toDatabase(pool);
       console.log(util.inspect(result, false, null, true));
     } catch (err) {
+      if (
+        err instanceof SyntaxError ||
+        err instanceof ReferenceError ||
+        err instanceof TypeError
+      )
+        throw err;
       console.log("Error: " + err.message);
     } finally {
       await pool.end();

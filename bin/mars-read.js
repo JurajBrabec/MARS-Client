@@ -21,6 +21,13 @@ async function readSummary() {
     console.log("Reading summary...");
     await summary.read();
   } catch (err) {
+    if (
+      err instanceof SyntaxError ||
+      err instanceof ReferenceError ||
+      err instanceof TypeError
+    )
+      throw err;
+
     console.log("Error: " + err.message);
   }
 }
@@ -30,6 +37,12 @@ async function readJobs(cmd) {
     console.log(`Reading jobs (${cmd.days} days)...`);
     await jobs.read(cmd.days);
   } catch (err) {
+    if (
+      err instanceof SyntaxError ||
+      err instanceof ReferenceError ||
+      err instanceof TypeError
+    )
+      throw err;
     console.log("Error: " + err.message);
   }
 }
@@ -39,6 +52,12 @@ async function readSlps() {
     console.log("Reading SLP's...");
     await slps.read();
   } catch (err) {
+    if (
+      err instanceof SyntaxError ||
+      err instanceof ReferenceError ||
+      err instanceof TypeError
+    )
+      throw err;
     console.log("Error: " + err.message);
   }
 }
@@ -48,6 +67,12 @@ async function readClients() {
     console.log("Reading clients...");
     await clients.read();
   } catch (err) {
+    if (
+      err instanceof SyntaxError ||
+      err instanceof ReferenceError ||
+      err instanceof TypeError
+    )
+      throw err;
     console.log("Error: " + err.message);
   }
 }
@@ -57,6 +82,12 @@ async function readPolicies() {
     console.log("Reading policies...");
     await policies.read();
   } catch (err) {
+    if (
+      err instanceof SyntaxError ||
+      err instanceof ReferenceError ||
+      err instanceof TypeError
+    )
+      throw err;
     console.log("Error: " + err.message);
   }
 }

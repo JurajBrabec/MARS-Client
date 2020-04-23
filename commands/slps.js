@@ -9,6 +9,12 @@ const slps = {
       const result = await nbu.slps().toDatabase(pool);
       console.log(util.inspect(result, false, null, true));
     } catch (err) {
+      if (
+        err instanceof SyntaxError ||
+        err instanceof ReferenceError ||
+        err instanceof TypeError
+      )
+        throw err;
       console.log("Error: " + err.message);
     } finally {
       await pool.end();
