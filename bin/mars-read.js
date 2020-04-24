@@ -25,6 +25,11 @@ async function init() {
       .command("puredisks")
       .description("Read pure disks")
       .action(readPureDisks);
+    program
+      .command("files")
+      .description("Read files")
+      .option("--backupid <backupId>", "Backup ID to read")
+      .action(readFiles);
     program.parse(process.argv);
   } catch (err) {
     console.log("Error: " + err.message);
@@ -64,6 +69,11 @@ function readRetLevels() {
 function readPureDisks() {
   console.log(`Reading pure disks...`);
   read(nbu.pureDisks());
+}
+
+function readFiles(cmd) {
+  console.log(`Reading files for ${cmd.backupid}...`);
+  read(nbu.files(cmd.backupid));
 }
 
 async function read(source) {
