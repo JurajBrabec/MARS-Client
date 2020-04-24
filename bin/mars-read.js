@@ -17,6 +17,14 @@ async function init() {
       .command("policies")
       .description("Read policies")
       .action(readPolicies);
+    program
+      .command("retlevels")
+      .description("Read retention levels")
+      .action(readRetLevels);
+    program
+      .command("puredisks")
+      .description("Read pure disks")
+      .action(readPureDisks);
     program.parse(process.argv);
   } catch (err) {
     console.log("Error: " + err.message);
@@ -46,6 +54,16 @@ function readClients() {
 function readPolicies() {
   console.log(`Reading policies...`);
   read(nbu.policies());
+}
+
+function readRetLevels() {
+  console.log(`Reading retention levels...`);
+  read(nbu.retLevels());
+}
+
+function readPureDisks() {
+  console.log(`Reading pure disks...`);
+  read(nbu.pureDisks());
 }
 
 async function read(source) {
