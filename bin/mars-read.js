@@ -1,71 +1,58 @@
 const program = require("commander");
-const summary = require("../commands/summary");
-const jobs = require("../commands/jobs");
-const slps = require("../commands/slps");
-const clients = require("../commands/clients");
-const policies = require("../commands/policies");
+const util = require("util");
+const { nbu } = require("../lib/netBackup");
 
-program.command("summary").description("Read summary").action(readSummary);
-program
-  .command("jobs")
-  .description("Read jobs")
-  .option("--days <days>", "Days to read", 7)
-  .action(readJobs);
-program.command("slps").description("Read SLP's").action(readSlps);
-program.command("clients").description("Read clients").action(readClients);
-program.command("policies").description("Read policies").action(readPolicies);
-program.parse(process.argv);
-
-async function readSummary() {
+async function init() {
   try {
-    console.log("Reading summary...");
-    await summary.read();
+    await nbu.init();
+    program.command("summary").description("Read summary").action(readSummary);
+    program
+      .command("jobs")
+      .description("Read jobs")
+      .option("--days <days>", "Days to read", 7)
+      .action(readJobs);
+    program.command("slps").description("Read SLP's").action(readSlps);
+    program.command("clients").description("Read clients").action(readClients);
+    program
+      .command("policies")
+      .description("Read policies")
+      .action(readPolicies);
+    program.parse(process.argv);
   } catch (err) {
-    if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
-    )
-      throw err;
-
     console.log("Error: " + err.message);
   }
 }
 
-async function readJobs(cmd) {
-  try {
-    console.log(`Reading jobs (${cmd.days} days)...`);
-    await jobs.read(cmd.days);
-  } catch (err) {
-    if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
-    )
-      throw err;
-    console.log("Error: " + err.message);
-  }
+function readSummary() {
+  console.log(`Reading summary...`);
+  read(nbu.summary());
 }
 
-async function readSlps() {
-  try {
-    console.log("Reading SLP's...");
-    await slps.read();
-  } catch (err) {
-    if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
-    )
-      throw err;
-    console.log("Error: " + err.message);
-  }
+function readJobs(cmd) {
+  console.log(`Reading jobs (${cmd.days} days)...`);
+  read(nbu.jobs(cmd.days));
 }
 
-async function readClients() {
+function readSlps() {
+  console.log(`Reading SLP's...`);
+  read(nbu.slps());
+}
+
+function readClients() {
+  console.log(`Reading clients...`);
+  read(nbu.clients());
+}
+
+function readPolicies() {
+  console.log(`Reading policies...`);
+  read(nbu.policies());
+}
+
+async function read(source) {
+  const { database } = require("../lib/Database");
   try {
-    console.log("Reading clients...");
-    await clients.read();
+    const result = await source.toDatabase(database);
+    console.log(util.inspect(result, false, null, true));
   } catch (err) {
     if (
       err instanceof SyntaxError ||
@@ -74,20 +61,8 @@ async function readClients() {
     )
       throw err;
     console.log("Error: " + err.message);
+  } finally {
+    await database.pool.end();
   }
 }
-
-async function readPolicies() {
-  try {
-    console.log("Reading policies...");
-    await policies.read();
-  } catch (err) {
-    if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
-    )
-      throw err;
-    console.log("Error: " + err.message);
-  }
-}
+init();
