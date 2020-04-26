@@ -29,6 +29,8 @@ async function init() {
       .command("files")
       .description("Read files")
       .option("--backupid <backupId>", "Backup ID to read")
+      .option("--client <client>", "Client to read")
+      .option("--all", "All files to read")
       .action(readFiles);
     program.parse(process.argv);
   } catch (err) {
@@ -72,13 +74,34 @@ function readPureDisks() {
 }
 
 function readFiles(cmd) {
-  console.log(`Reading files for ${cmd.backupid}...`);
-  read(nbu.files(cmd.backupid));
+  let args;
+  if (cmd.backupid) {
+    console.log(`Reading files for backup ID ${cmd.backupid}...`);
+    args = { backupid: cmd.backupid };
+  }
+  if (cmd.client) {
+    console.log(`Reading files for client ${cmd.client}...`);
+    args = { client: cmd.client };
+  }
+  if (cmd.all) {
+    console.log(`Reading all files...`);
+    args = { all: true, concurrency: 10 };
+  }
+  if (args) {
+    read(nbu.files(args));
+  } else {
+    console.log(`No argument given.`);
+  }
+}
+
+function onProgress(progress) {
+  console.log(progress);
 }
 
 async function read(source) {
   const { database } = require("../lib/Database");
   try {
+    source.on("progress", onProgress);
     const result = await source.toDatabase(database);
     console.log(util.inspect(result, false, null, true));
   } catch (err) {

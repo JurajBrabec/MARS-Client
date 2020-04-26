@@ -11,6 +11,7 @@
   "author": "Juraj Brabec",
   "license": "ISC",
   "dependencies": {
+    "bluebird": "^3.7.2",
     "chalk": "^3.0.0",
     "commander": "^4.1.1",
     "debug": "^4.1.1",
