@@ -9,7 +9,7 @@ async function init() {
     program
       .command("jobs")
       .description("Read jobs")
-      .option("--days <days>", "Days to read", 7)
+      .option("--days <days>", "Days to read", 1)
       .action(readJobs);
     program.command("slps").description("Read SLP's").action(readSlps);
     program.command("clients").description("Read clients").action(readClients);
@@ -32,6 +32,13 @@ async function init() {
       .option("--client <client>", "Client to read")
       .option("--all", "All files to read")
       .action(readFiles);
+    program
+      .command("images")
+      .description("Read images")
+      .option("--days <days>", "Days to read")
+      .option("--client <client>", "Client to read")
+      .option("--all", "All files to read")
+      .action(readImages);
     program.parse(process.argv);
   } catch (err) {
     console.log("Error: " + err.message);
@@ -44,8 +51,8 @@ function readSummary() {
 }
 
 function readJobs(cmd) {
-  console.log(`Reading jobs (${cmd.days} days)...`);
-  read(nbu.jobs(cmd.days));
+  console.log(`Reading jobs ${cmd.days} days back...`);
+  read(nbu.jobs({ days: cmd.days }));
 }
 
 function readSlps() {
@@ -94,7 +101,29 @@ function readFiles(cmd) {
   }
 }
 
+function readImages(cmd) {
+  let args;
+  if (cmd.days) {
+    console.log(`Reading images for ${cmd.days} back...`);
+    args = { days: cmd.days };
+  }
+  if (cmd.client) {
+    console.log(`Reading images for client ${cmd.client}...`);
+    args = { client: cmd.client };
+  }
+  if (cmd.all) {
+    console.log(`Reading all images...`);
+    args = { all: true, concurrency: 10 };
+  }
+  if (args) {
+    read(nbu.images(args));
+  } else {
+    console.log(`No argument given.`);
+  }
+}
+
 function onProgress(progress) {
+  //  console.log(`${progress.source}:${progress.message} (${progress.time}s)`);
   console.log(progress);
 }
 
@@ -104,6 +133,7 @@ async function read(source) {
     source.on("progress", onProgress);
     const result = await source.toDatabase(database);
     console.log(util.inspect(result, false, null, true));
+    console.log(util.inspect(source.status, false, null, true));
   } catch (err) {
     if (
       err instanceof SyntaxError ||
