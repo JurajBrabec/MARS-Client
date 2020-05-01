@@ -4,7 +4,14 @@
   "description": "MARS client",
   "main": "./bin/mars.js",
   "bin": "./bin/mars.js",
+  "pkg": {
+    "scripts": [
+      "bin/**/*.js",
+      "lib/**/*.js"
+    ]
+  },
   "scripts": {
+    "build": "rollup --config",
     "test": "node ./bin/mars.js",
     "debug": "node --inspect-brk ./bin/mars.js"
   },
@@ -12,11 +19,13 @@
   "license": "ISC",
   "dependencies": {
     "bluebird": "^3.7.2",
-    "chalk": "^3.0.0",
-    "commander": "^4.1.1",
+    "chalk": "^4.0.0",
+    "commander": "^5.1.0",
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
-    "mariadb": "^2.3.1"
+    "mariadb": "^2.3.1",
+    "pixl-cli": "^1.0.12",
+    "xml-js": "^1.6.11"
   },
   "devDependencies": {}
 }

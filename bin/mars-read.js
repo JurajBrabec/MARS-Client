@@ -1,5 +1,6 @@
 const program = require("commander");
 const util = require("util");
+const cli = require("pixl-cli");
 const { nbu } = require("../lib/netBackup");
 
 async function init() {
@@ -124,17 +125,21 @@ function readImages(cmd) {
 
 function onProgress(progress) {
   //  console.log(`${progress.source}:${progress.message} (${progress.time}s)`);
-  console.log(progress);
+  //console.log(progress);
+  cli.progress.update({ amount: progress.done, max: progress.count });
 }
 
 async function read(source) {
   const { database } = require("../lib/Database");
   try {
+    cli.progress.start({ exitOnSig: true });
     source.on("progress", onProgress);
     const result = await source.toDatabase(database);
+    cli.progress.end();
     console.log(util.inspect(result, false, null, true));
     console.log(util.inspect(source.status, false, null, true));
   } catch (err) {
+    cli.progress.end();
     if (
       err instanceof SyntaxError ||
       err instanceof ReferenceError ||
