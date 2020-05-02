@@ -11,6 +11,8 @@ async function init() {
       .command("jobs")
       .description("Read jobs")
       .option("--days <days>", "Days to read", 1)
+      .option("--jobid <jobid>", "Job ID to read")
+      .option("--all", "All jobs to read")
       .action(readJobs);
     program.command("slps").description("Read SLP's").action(readSlps);
     program.command("clients").description("Read clients").action(readClients);
@@ -40,114 +42,160 @@ async function init() {
       .option("--client <client>", "Client to read")
       .option("--all", "All files to read")
       .action(readImages);
+    program.command("vaults").description("Read vaults").action(readVaults);
     program.parse(process.argv);
   } catch (err) {
-    console.log("Error: " + err.message);
+    cli.print("Error: " + err.message);
   }
 }
 
 function readSummary() {
-  console.log(`Reading summary...`);
+  cli.print(`Reading summary...`);
   read(nbu.summary());
 }
 
 function readJobs(cmd) {
-  console.log(`Reading jobs ${cmd.days} days back...`);
-  read(nbu.jobs({ days: cmd.days }));
+  let args;
+  if (cmd.all) delete cmd.days;
+  if (cmd.days) {
+    cli.print(`Reading jobs ${cmd.days} days back...`);
+    args = { days: cmd.days };
+  }
+  if (cmd.jobid) {
+    cli.print(`Reading job ID ${cmd.jobid} ...`);
+    args = { jobid: cmd.jobid };
+  }
+  if (cmd.all) {
+    cli.print(`Reading all jobs...`);
+    args = { all: true };
+  }
+  if (args) {
+    read(nbu.jobs(args));
+  } else {
+    cli.print(`No argument given.`);
+  }
 }
 
 function readSlps() {
-  console.log(`Reading SLP's...`);
+  cli.print(`Reading SLP's...`);
   read(nbu.slps());
 }
 
 function readClients() {
-  console.log(`Reading clients...`);
+  cli.print(`Reading clients...`);
   read(nbu.clients());
 }
 
 function readPolicies() {
-  console.log(`Reading policies...`);
+  cli.print(`Reading policies...`);
   read(nbu.policies());
 }
 
 function readRetLevels() {
-  console.log(`Reading retention levels...`);
+  cli.print(`Reading retention levels...`);
   read(nbu.retLevels());
 }
 
 function readPureDisks() {
-  console.log(`Reading pure disks...`);
+  cli.print(`Reading pure disks...`);
   read(nbu.pureDisks());
 }
 
 function readFiles(cmd) {
   let args;
   if (cmd.backupid) {
-    console.log(`Reading files for backup ID ${cmd.backupid}...`);
+    cli.print(`Reading files for backup ID ${cmd.backupid}...`);
     args = { backupid: cmd.backupid };
   }
   if (cmd.client) {
-    console.log(`Reading files for client ${cmd.client}...`);
+    cli.print(`Reading files for client ${cmd.client}...`);
     args = { client: cmd.client };
   }
   if (cmd.all) {
-    console.log(`Reading all files...`);
+    cli.print(`Reading all files...`);
     args = { all: true, concurrency: 10 };
   }
   if (args) {
     read(nbu.files(args));
   } else {
-    console.log(`No argument given.`);
+    cli.print(`No argument given.`);
   }
 }
 
 function readImages(cmd) {
   let args;
   if (cmd.days) {
-    console.log(`Reading images for ${cmd.days} back...`);
+    cli.print(`Reading images for ${cmd.days} back...`);
     args = { days: cmd.days };
   }
   if (cmd.client) {
-    console.log(`Reading images for client ${cmd.client}...`);
+    cli.print(`Reading images for client ${cmd.client}...`);
     args = { client: cmd.client };
   }
   if (cmd.all) {
-    console.log(`Reading all images...`);
+    cli.print(`Reading all images...`);
     args = { all: true, concurrency: 10 };
   }
   if (args) {
     read(nbu.images(args));
   } else {
-    console.log(`No argument given.`);
+    cli.print(`No argument given.`);
   }
 }
 
-function onProgress(progress) {
-  //  console.log(`${progress.source}:${progress.message} (${progress.time}s)`);
-  //console.log(progress);
-  cli.progress.update({ amount: progress.done, max: progress.count });
+function readVaults() {
+  cli.print(`Reading vaults...`);
+  read(nbu.vaults());
 }
 
+function onProgress(progress) {
+  cli.progress.update({ amount: progress.done, max: progress.count });
+}
+function onFinish(status) {
+  cli.print(
+    `Finished ${cli.green(status.commands)} ${cli.pluralize(
+      "command",
+      status.commands
+    )} in ${cli.getTextFromSeconds(status.duration)}, `
+  );
+  cli.print(
+    `${cli.green(status.sqls)} ${cli.pluralize(
+      "SQL",
+      status.sqls
+    )} in ${cli.getTextFromSeconds(status.sqlDuration)}, `
+  );
+  cli.print(`(${cli.green(status.rows)} rows, `);
+  cli.print(`${cli.green(status.errors)} errors, `);
+  cli.println(`${cli.green(status.warnings)} warnings)`);
+}
 async function read(source) {
   const { database } = require("../lib/Database");
   try {
-    cli.progress.start({ exitOnSig: true });
+    cli.progress.start({
+      exitOnSig: true,
+      catchCrash: true,
+      unicode: false,
+      styles: {
+        spinner: ["bold", "white"],
+        braces: ["gray"],
+        bar: ["bold", "green"],
+        pct: ["bold", "white"],
+        remain: ["green"],
+      },
+    });
     source.on("progress", onProgress);
     const result = await source.toDatabase(database);
-    cli.progress.end();
-    console.log(util.inspect(result, false, null, true));
-    console.log(util.inspect(source.status, false, null, true));
+    onFinish(result);
   } catch (err) {
-    cli.progress.end();
     if (
       err instanceof SyntaxError ||
       err instanceof ReferenceError ||
       err instanceof TypeError
     )
       throw err;
-    console.log("Error: " + err.message);
+    cli.print(cli.red(`Error: ${err.message}`));
   } finally {
+    cli.progress.end();
     await database.pool.end();
   }
 }
