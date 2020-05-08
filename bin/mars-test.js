@@ -1,7 +1,7 @@
 const program = require("commander");
 const cli = require("pixl-cli");
 const { nbu } = require("../lib/netBackup");
-const { database } = require("../lib/Database");
+const { Database } = require("../lib/Database");
 
 let failedTests = 0;
 function testOutput(testResult) {
@@ -13,6 +13,7 @@ function testOutput(testResult) {
   cli.print("\n");
 }
 try {
+  const database = new Database();
   nbu
     .test()
     .then((res) => {

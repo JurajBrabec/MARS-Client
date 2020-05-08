@@ -1,7 +1,7 @@
 const program = require("commander");
-const util = require("util");
 const cli = require("pixl-cli");
 const { nbu } = require("../lib/netBackup");
+const read = require("../lib/Mars").read;
 
 async function init() {
   try {
@@ -148,55 +148,4 @@ function readVaults() {
   read(nbu.vaults());
 }
 
-function onProgress(progress) {
-  cli.progress.update({ amount: progress.done, max: progress.count });
-}
-function onFinish(status) {
-  cli.print(
-    `Finished ${cli.green(status.commands)} ${cli.pluralize(
-      "command",
-      status.commands
-    )} in ${cli.getTextFromSeconds(status.duration)}, `
-  );
-  cli.print(
-    `${cli.green(status.sqls)} ${cli.pluralize(
-      "SQL",
-      status.sqls
-    )} in ${cli.getTextFromSeconds(status.sqlDuration)}, `
-  );
-  cli.print(`(${cli.green(status.rows)} rows, `);
-  cli.print(`${cli.green(status.errors)} errors, `);
-  cli.println(`${cli.green(status.warnings)} warnings)`);
-}
-async function read(source) {
-  const { database } = require("../lib/Database");
-  try {
-    cli.progress.start({
-      exitOnSig: true,
-      catchCrash: true,
-      unicode: false,
-      styles: {
-        spinner: ["bold", "white"],
-        braces: ["gray"],
-        bar: ["bold", "green"],
-        pct: ["bold", "white"],
-        remain: ["green"],
-      },
-    });
-    source.on("progress", onProgress);
-    const result = await source.toDatabase(database);
-    onFinish(result);
-  } catch (err) {
-    if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
-    )
-      throw err;
-    cli.print(cli.red(`Error: ${err.message}`));
-  } finally {
-    cli.progress.end();
-    await database.pool.end();
-  }
-}
 init();

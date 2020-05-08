@@ -8,7 +8,8 @@ program
   .description(pkg.description)
   .command("config", "configure settings")
   .command("read <task>", "reading info")
-  .command("write", "writing info")
+  .command("write <task>", "writing info")
+  .command("scheduler", "execute tasks according to schedule")
   .command("test", "test settings")
   .option("-d, --debug", "debug mode")
   .parse(process.argv);
