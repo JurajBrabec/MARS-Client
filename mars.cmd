@@ -1,0 +1,1 @@
+@p:\PortableApps\NodeJSPortable\App\node.exe .\mars.js %*

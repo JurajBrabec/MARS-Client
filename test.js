@@ -1,8 +1,8 @@
-const { nbu } = require("../lib/netBackup");
+const { nbu } = require("./lib/netBackup");
 
 async function test() {
   const util = require("util");
-  const { Database } = require("../lib/Database");
+  const { Database } = require("./lib/Database");
   const database = new Database();
   try {
     console.log(await database.test());
@@ -12,7 +12,9 @@ async function test() {
     source.on("progress", console.log);
     //const result = await source.asObjects();
     const result = await source.toDatabase(database);
+    console.log("Result:");
     console.log(util.inspect(result, false, null, true));
+    console.log("Status:");
     console.log(util.inspect(source.status, false, null, true));
   } catch (err) {
     if (
