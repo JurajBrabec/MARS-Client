@@ -122,10 +122,11 @@ function onProgress(progress) {
   cli.progress.update({
     amount: progress.done,
     max: progress.count,
-    width: cli.width() - 30,
+    width: cli.width() - 40,
   });
 }
 function onFinish(status) {
+  cli.progress.erase();
   cli.println(
     `Finished ${cli.green(status.commands)} ${cli.pluralize(
       "command",
@@ -148,12 +149,12 @@ function onFinish(status) {
 async function execute(source) {
   const database = new Database();
   try {
-    cli.println(source.title);
+    cli.println(`${source.title}...`);
     cli.progress.start({
       exitOnSig: true,
       catchCrash: true,
       unicode: true,
-      width: cli.width() - 30,
+      width: cli.width() - 40,
       braces: ["[", "]"],
       styles: {
         spinner: ["bold", "green"],
@@ -167,6 +168,7 @@ async function execute(source) {
     const result = await source.toDatabase(database);
     onFinish(result);
   } catch (err) {
+    cli.progress.erase();
     if (
       err instanceof SyntaxError ||
       err instanceof ReferenceError ||
@@ -180,5 +182,30 @@ async function execute(source) {
   }
 }
 
-function execTickets() {}
+async function execTickets() {
+  const database = new Database();
+  let connection;
+  let result;
+  try {
+    connection = await database.pool.getConnection();
+    const rows = await connection.query("select * from nbu_sm9;");
+    result = {
+      rows: rows.length,
+    };
+  } catch (err) {
+    if (
+      err instanceof SyntaxError ||
+      err instanceof ReferenceError ||
+      err instanceof TypeError
+    )
+      throw err;
+    result = { error: err.message };
+  } finally {
+    if (connection) await connection.release();
+  }
+  return result;
+}
+
 function execEsl() {}
+
+execTickets();
