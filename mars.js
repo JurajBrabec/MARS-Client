@@ -1,6 +1,5 @@
 const cli = require("pixl-cli");
 const commander = require("commander");
-const moment = require("moment");
 const pkg = require("./package.json");
 const config = require("./src/mars-config");
 const exec = require("./src/mars-exec");
@@ -8,7 +7,7 @@ const scheduler = require("./src/mars-scheduler");
 const test = require("./src/mars-test");
 
 cli.println(cli.box(cli.bold.white(`MARS v${pkg.version}`)));
-cli.setLogFile("./log/mars.log");
+cli.setLogFile(`./log/${pkg.name}.log`);
 const program = new commander.Command();
 program
   .version(pkg.version, "-v, --version")

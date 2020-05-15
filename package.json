@@ -2,18 +2,11 @@
   "name": "mars",
   "version": "1.0.0",
   "description": "MARS client",
-  "main": "./bin/mars.js",
-  "bin": "./bin/mars.js",
-  "pkg": {
-    "scripts": [
-      "bin/**/*.js",
-      "lib/**/*.js"
-    ]
-  },
+  "main": "./mars.js",
   "scripts": {
     "build": "rollup --config",
-    "test": "node ./bin/mars.js",
-    "debug": "node --inspect-brk ./bin/mars.js"
+    "test": "node ./mars.js",
+    "debug": "node --inspect-brk ./mars.js"
   },
   "author": "Juraj Brabec",
   "license": "ISC",

@@ -16,15 +16,18 @@ var startTime = moment();
 
 const crons = {
   summary: "* */1 * * * *",
-  clients: "* 0 */1 * * *",
-  policies: "* 0 */1 * * *",
-  slps: "* 0 */1 * * *",
-  vaults: "* 0 */1 * * *",
-  pureDisks: "* 0 10 * * *",
-  retLevels: "* 0 12 * * *",
-  files: "* 0 */3 * * *",
-  images: "* 0 */3 * * *",
-  jobs: "* */5 * * * *",
+  clients: process.env.CRON_CONFIG,
+  policies: process.env.CRON_CONFIG,
+  slps: process.env.CRON_CONFIG,
+  vaults: process.env.CRON_CONFIG,
+  pureDisks: process.env.CRON_CONFIG,
+  retLevels: process.env.CRON_CONFIG,
+  files: process.env.CRON_DETAILS,
+  images: process.env.CRON_DETAILS,
+  jobs: process.env.CRON_JOBS,
+  allJobs: "* * 12 * * *",
+  tickets: process.env.CRON_TICKETS,
+  esl: process.env.CRON_ESL,
 };
 
 async function scheduler(cmd) {
@@ -58,7 +61,10 @@ async function scheduler(cmd) {
           task = nbu.retLevels();
           break;
         case "jobs":
-          task = nbu.jobs({ days: 3 });
+          task = nbu.jobs({ days: 1 });
+          break;
+        case "allJobs":
+          task = nbu.jobs({ days: 7 });
           break;
         case "files":
           task = nbu.files({ all: true, concurrency: 10 });
@@ -66,21 +72,29 @@ async function scheduler(cmd) {
         case "images":
           task = nbu.images({ all: true, concurrency: 10 });
           break;
+        case "tickets":
+          task = nbu.tickets();
+          break;
+        case "esl":
+          task = nbu.esl();
+          break;
       }
       if (cmd.list) {
-        cli.print(
-          `${task.title} ${
-            inSec ? cli.blue(atDate.from(startTime)) : cli.white.bold("now")
-          }`
-        );
-        cli.println(` (at ${atDate.format("H:mm")})`);
+        const line = `${task.title} ${
+          inSec ? cli.blue(atDate.from(startTime)) : cli.white.bold("now")
+        } (at ${atDate.format("H:mm")})`;
+        cli.println(line);
       }
-      if (cmd.list || inSec > 0) {
-        continue;
-      }
+      if (cmd.list || inSec > 0) continue;
       await exec.execute(task);
     }
   } catch (err) {
-    cli.print("Error: " + err.message);
+    if (
+      err instanceof SyntaxError ||
+      err instanceof ReferenceError ||
+      err instanceof TypeError
+    )
+      throw err;
+    cli.print(cli.red("Error: " + err.message));
   }
 }

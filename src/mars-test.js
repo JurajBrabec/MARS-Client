@@ -1,5 +1,6 @@
 const commander = require("commander");
 const cli = require("pixl-cli");
+const fs = require("fs");
 const { nbu } = require("../lib/netBackup");
 const { Database } = require("../lib/Database");
 
@@ -9,13 +10,19 @@ module.exports = { command };
 
 async function test() {
   let failedTests = 0;
+  let result;
   function testOutput(testResult) {
-    if (testResult.error) failedTests++;
-    cli.print(`${testResult.source}: `);
-    const color = testResult.error ? cli.red : cli.bold.green;
-    cli.println(color(testResult.status), testResult.err);
+    let status = `${testResult.source}: `;
+    if (testResult.error) {
+      failedTests++;
+      status += cli.red(testResult.status + ": " + testResult.error);
+    } else {
+      status += cli.bold.green(testResult.status);
+    }
+    cli.println(status);
   }
   try {
+    cli.println("Executing tests...\n");
     const database = new Database();
     nbu
       .test()
@@ -28,12 +35,13 @@ async function test() {
       })
       .catch((err) => testOutput(err))
       .finally(() => {
-        cli.print("-------------\n");
-        testOutput({
-          source: "All tests",
+        cli.print("\n");
+        result = {
+          source: "Test results",
           error: failedTests,
-          status: failedTests ? "not OK" : "OK",
-        });
+          status: failedTests ? "Failed" : "OK",
+        };
+        testOutput(result);
         database.pool.end();
       });
   } catch (err) {
