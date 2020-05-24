@@ -1,6 +1,6 @@
 {
   "name": "mars",
-  "version": "1.0.0",
+  "version": "4.2.0",
   "description": "MARS client",
   "main": "./mars.js",
   "scripts": {
@@ -18,7 +18,7 @@
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
     "mariadb": "^2.3.1",
-    "moment": "^2.25.1",
+    "moment": "^2.25.3",
     "multi-ini": "^2.1.0",
     "pixl-cli": "^1.0.12",
     "xml-js": "^1.6.11"
