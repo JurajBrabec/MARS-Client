@@ -30,17 +30,12 @@ async function testMars() {
   }
 }
 
-const Emitter = require("./lib/Emitter");
-const Readable = require("./lib/Readable");
-const Writable = require("./lib/Writable");
-const Transform = require("./lib/Transform");
+const dotenv = require("dotenv").config();
+const { Emitter, Readable, Writable, Transform } = require("./lib/TextParsers");
 const { Database } = require("./lib/Database");
 
 function testSync(Object, params, callback) {
   const object = new Object(params.options, params.func);
-  if (params.debugEvents) {
-    object.debugEvents();
-  } else if (params.debug) object.debug();
   if (params.pipe) {
     object.pipe(params.pipe);
   } else if (params.onData) object.on("data", params.onData);
@@ -55,9 +50,6 @@ function testSync(Object, params, callback) {
 }
 async function testAsync(Object, params, callback) {
   const object = new Object(params.options, params.func);
-  if (params.debugEvents) {
-    object.debugEvents();
-  } else if (params.debug) object.debug();
   if (params.pipe) {
     object.pipe(params.pipe);
   } else if (params.onData) {
@@ -105,8 +97,6 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
   );
   let endFunc;
   const params = {
-    debug: true,
-    debugEvents: true,
     options: {},
     pipe: undefined,
     onData,
@@ -232,7 +222,7 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
           case Writable.Function:
           case Writable.File:
           case Writable.Sql:
-            destination = new DestinationClass(options, func).debugEvents();
+            destination = new DestinationClass(options, func);
             break;
         }
         if (destination) params.pipe = destination;
@@ -283,10 +273,10 @@ const objectMode = true;
 //const objectMode = true;
 
 //test(aSync, objectMode, Readable.Function, Writable.Sql);
-allTests(aSync);
+//allTests(aSync);
 
 function testTransform() {
-  class CT1 extends Transform.Transform {
+  class CT1 extends Transform.Text {
     _transform = () =>
       this.expect(/^ITEM/)
         .split(/^(?:ITEM)/m)
