@@ -119,46 +119,6 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
   try {
     switch (SourceClass) {
       case emitter.Command:
-      case emitter.Function:
-      case readable.Readable:
-      case readable.Function:
-        break;
-      case emitter.File:
-      case emitter.Process:
-      case emitter.File:
-      case readable.Process:
-        if (objectMode) throw `'${SourceClass.name}' in object mode!`;
-        break;
-      case emitter.Sql:
-      case readable.Sql:
-        if (!objectMode) throw `'${SourceClass.name}' not in object mode!`;
-        break;
-      default:
-        throw `Unknown source class '${SourceClass.name}'!`;
-    }
-    switch (DestinationClass) {
-      case undefined:
-        break;
-      case process.stdout:
-      case writable.File:
-        if (objectMode)
-          throw `'${SourceClass.name}' requires a destination in object mode!`;
-        break;
-      case writable.Writable:
-      case writable.Function:
-        break;
-      case writable.Sql:
-        if (
-          SourceClass !== readable.Readable &&
-          SourceClass !== readable.Function
-        )
-          throw `Destination '${DestinationClass.name}' not supported for source '${SourceClass.name}'`;
-        break;
-      default:
-        throw `Unknown destination class '${DestinationClass.name}'!`;
-    }
-    switch (SourceClass) {
-      case emitter.Command:
         break;
       case emitter.Function:
         params.func = function (success, failure, args) {
@@ -396,15 +356,14 @@ Peter,25,29`;
   });
 
   const myTransform = new parser.Transform({
-    defaultEncoding: "utf8",
-    objectMode: true,
-    parser: (source) =>
+    parser: new parser.Parser((source) =>
       source
         .split("\n")
         .filter(/#/)
         .separate(",")
         .expect(3)
-        .assign(new Tables([table1, table2])),
+        .assign(new Tables([table1, table2]))
+    ),
   });
 
   const myWritable = new stream.Writable({
