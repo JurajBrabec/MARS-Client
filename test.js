@@ -31,7 +31,8 @@ async function testMars() {
 }
 
 const dotenv = require("dotenv").config();
-const { Emitter, Readable, Writable, Transform } = require("./lib/TextParsers");
+const { emitter, readable, writable, parser } = require("./lib/TextParsers");
+const { Tables } = require("./lib/Tables");
 const { Database } = require("./lib/Database");
 
 function testSync(Object, params, callback) {
@@ -117,19 +118,19 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
   }
   try {
     switch (SourceClass) {
-      case Emitter.Command:
-      case Emitter.Function:
-      case Readable.Readable:
-      case Readable.Function:
+      case emitter.Command:
+      case emitter.Function:
+      case readable.Readable:
+      case readable.Function:
         break;
-      case Emitter.File:
-      case Emitter.Process:
-      case Emitter.File:
-      case Readable.Process:
+      case emitter.File:
+      case emitter.Process:
+      case emitter.File:
+      case readable.Process:
         if (objectMode) throw `'${SourceClass.name}' in object mode!`;
         break;
-      case Emitter.Sql:
-      case Readable.Sql:
+      case emitter.Sql:
+      case readable.Sql:
         if (!objectMode) throw `'${SourceClass.name}' not in object mode!`;
         break;
       default:
@@ -139,17 +140,17 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
       case undefined:
         break;
       case process.stdout:
-      case Writable.File:
+      case writable.File:
         if (objectMode)
           throw `'${SourceClass.name}' requires a destination in object mode!`;
         break;
-      case Writable.Writable:
-      case Writable.Function:
+      case writable.Writable:
+      case writable.Function:
         break;
-      case Writable.Sql:
+      case writable.Sql:
         if (
-          SourceClass !== Readable.Readable &&
-          SourceClass !== Readable.Function
+          SourceClass !== readable.Readable &&
+          SourceClass !== readable.Function
         )
           throw `Destination '${DestinationClass.name}' not supported for source '${SourceClass.name}'`;
         break;
@@ -157,30 +158,30 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
         throw `Unknown destination class '${DestinationClass.name}'!`;
     }
     switch (SourceClass) {
-      case Emitter.Command:
+      case emitter.Command:
         break;
-      case Emitter.Function:
+      case emitter.Function:
         params.func = function (success, failure, args) {
           success(args);
         };
         break;
-      case Readable.Function:
+      case readable.Function:
         params.func = function (push, success, failure, args) {
           for (let i = 1; i < 3; i++) push(args);
           success();
         };
         break;
-      case Emitter.File:
-      case Readable.File:
+      case emitter.File:
+      case readable.File:
         params.options.fileName = "./package.json";
         break;
-      case Emitter.Process:
-      case Readable.Process:
+      case emitter.Process:
+      case readable.Process:
         params.options.command = "dir";
         params.options.args = ["-s"];
         break;
-      case Emitter.Sql:
-      case Readable.Sql:
+      case emitter.Sql:
+      case readable.Sql:
         params.options.database = new Database();
         params.options.sql = "select * from bpdbjobs_summary;";
         endFunc = () => params.options.database.pool.end();
@@ -189,39 +190,39 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
     switch (DestinationClass) {
       case undefined:
       case process.stdout:
-      case Writable.Writable:
+      case writable.Writable:
         break;
-      case Writable.Function:
+      case writable.Function:
         func = function (chunk, encoding, success, failure) {
           console.log(encoding, chunk);
           return success();
         };
         break;
-      case Writable.File:
+      case writable.File:
         options.fileName = "./test.txt";
         break;
-      case Writable.Sql:
+      case writable.Sql:
         options.database = new Database();
         options.sql = "insert into test (name) values (:name);";
         endFunc = () => options.database.pool.end();
         break;
     }
     switch (SourceClass) {
-      case Readable.Readable:
-      case Readable.Function:
-      case Readable.File:
-      case Readable.Process:
-      case Readable.Sql:
+      case readable.Readable:
+      case readable.Function:
+      case readable.File:
+      case readable.Process:
+      case readable.Sql:
         let destination;
         switch (DestinationClass) {
           case undefined:
           case process.stdout:
             destination = DestinationClass;
             break;
-          case Writable.Writable:
-          case Writable.Function:
-          case Writable.File:
-          case Writable.Sql:
+          case writable.Writable:
+          case writable.Function:
+          case writable.File:
+          case writable.Sql:
             destination = new DestinationClass(options, func);
             break;
         }
@@ -237,28 +238,28 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
 
 function allTests(aSync) {
   [
-    Emitter.Command,
-    Emitter.Function,
-    Emitter.File,
-    Emitter.Process,
-    Emitter.Sql,
+    emitter.Command,
+    emitter.Function,
+    emitter.File,
+    emitter.Process,
+    emitter.Sql,
   ].forEach((Source) => {
     //      test(aSync, true, Source);
     //      test(aSync, false, Source);
   });
   [
-    Readable.Readable,
-    Readable.Function,
-    Readable.File,
-    Readable.Process,
-    Readable.Sql,
+    readable.Readable,
+    readable.Function,
+    readable.File,
+    readable.Process,
+    readable.Sql,
   ].forEach((Source) => {
     [
       undefined,
       process.stdout,
-      Writable.Writable,
-      Writable.Function,
-      Writable.Sql,
+      writable.Writable,
+      writable.Function,
+      writable.Sql,
     ].forEach((Destination) => {
       test(aSync, true, Source, Destination);
       //        test(aSync, false, Source, Destination);
@@ -275,10 +276,11 @@ const objectMode = true;
 //test(aSync, objectMode, Readable.Function, Writable.Sql);
 //allTests(aSync);
 
-function testTransform() {
-  class CT1 extends Transform.Text {
-    _transform = () =>
-      this.expect(/^ITEM/)
+function testParser() {
+  class CT1 extends parser.Parser {
+    _parse = (source) =>
+      source
+        .expect(/^ITEM/)
         .split(/^(?:ITEM)/m)
         .trim()
         .split(/(?:\nSUBITEM)/m)
@@ -299,7 +301,7 @@ function testTransform() {
 
   let result;
   try {
-    result = ct.transform(text);
+    result = ct.parse(text);
   } catch (error) {
     result = error;
   }
@@ -307,5 +309,113 @@ function testTransform() {
   console.log(
     `Level:${ct.level} Groups:${ct.groups} Rows:${ct.rowsTotal} (${ct.rows}/group) Fields:${ct.fields} Duration:${ct.elapsed}ms`
   );
+}
+//testParser();
+
+function testLiteralStrings() {
+  function literalString(strings, ...params) {
+    return { strings, params };
+  }
+  const p1 = "p1";
+  const p2 = "p2";
+  const s = literalString`s1 ${p1} s2 ${p2} s3`;
+  console.log({ s });
+}
+
+function testNew() {
+  const t1 = {
+    table1: [
+      { field1: /^(\w+)/, key: true },
+      { field2: / (\w+)/, key: true },
+    ],
+  };
+  const t2 = {
+    table2: [
+      { field1: "string", key: true },
+      { field2: "string", key: true },
+    ],
+  };
+  const t3 = {
+    table3: [{ field1: "number", key: true }, { field2: "number" }],
+  };
+
+  const output = `aa bb 11\ncc dd 22\nee ff 33`;
+  const rows1 = new parser.Parser(output).split("\n").match(new Tables(t1));
+  const rows2 = new parser.Parser(output)
+    .split("\n")
+    .split(" ")
+    .assign(new Tables([t2, t3]));
+
+  console.log("\nTransformed rows:");
+  console.log(rows1);
+  console.log(rows2);
+}
+
+function example() {
+  let text = `#name,age,points
+John,33,145
+Peter,25,29`;
+
+  console.log(text);
+
+  let result = new parser.Parser(text)
+    .split("\n")
+    .filter(/#/)
+    .separate(",")
+    .expect(3)
+    .get();
+
+  console.log(result);
+}
+
+function testTransform() {
+  const table1 = {
+    table1: [{ name: "string", key: true }, { age: "number" }],
+  };
+  const table2 = {
+    table2: [{ points: "number" }, { level: "number" }],
+  };
+
+  let text = `#name,age,points
+John,33,145
+Peter,25,29`;
+
+  const stream = require("stream");
+  const myReadable = new stream.Readable({
+    encoding: "utf8",
+    objectMode: false,
+    read() {
+      for (let i = 0; i < 10; i++) {
+        this.push(text);
+      }
+      this.push(null);
+    },
+    destroy(error, callback) {
+      callback(error);
+    },
+  });
+
+  const myTransform = new parser.Transform({
+    defaultEncoding: "utf8",
+    objectMode: true,
+    parser: (source) =>
+      source
+        .split("\n")
+        .filter(/#/)
+        .separate(",")
+        .expect(3)
+        .assign(new Tables([table1, table2])),
+  });
+
+  const myWritable = new stream.Writable({
+    defaultEncoding: "utf8",
+    objectMode: true,
+    write(chunk, encoding, callback) {
+      console.log(chunk);
+      callback();
+    },
+  });
+
+  myReadable.pipe(myTransform).pipe(myWritable);
 }
 testTransform();
