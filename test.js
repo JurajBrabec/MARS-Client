@@ -282,36 +282,7 @@ function testLiteralStrings() {
   console.log({ s });
 }
 
-function testNew() {
-  const t1 = {
-    table1: [
-      { field1: /^(\w+)/, key: true },
-      { field2: / (\w+)/, key: true },
-    ],
-  };
-  const t2 = {
-    table2: [
-      { field1: "string", key: true },
-      { field2: "string", key: true },
-    ],
-  };
-  const t3 = {
-    table3: [{ field1: "number", key: true }, { field2: "number" }],
-  };
-
-  const output = `aa bb 11\ncc dd 22\nee ff 33`;
-  const rows1 = new parser.Parser(output).split("\n").match(new Tables(t1));
-  const rows2 = new parser.Parser(output)
-    .split("\n")
-    .split(" ")
-    .assign(new Tables([t2, t3]));
-
-  console.log("\nTransformed rows:");
-  console.log(rows1);
-  console.log(rows2);
-}
-
-function example() {
+function parserExample() {
   let text = `#name,age,points
 John,33,145
 Peter,25,29`;
@@ -328,53 +299,71 @@ Peter,25,29`;
   console.log(result);
 }
 
-function testTransform() {
-  const table1 = {
-    table1: [{ name: "string", key: true }, { age: "number" }],
-  };
-  const table2 = {
-    table2: [{ points: "number" }, { level: "number" }],
-  };
-
-  let text = `#name,age,points
-John,33,145
-Peter,25,29`;
-
+async function test() {
   const stream = require("stream");
-  const myReadable = new stream.Readable({
-    encoding: "utf8",
-    objectMode: false,
-    read() {
-      for (let i = 0; i < 10; i++) {
-        this.push(text);
-      }
-      this.push(null);
-    },
-    destroy(error, callback) {
-      callback(error);
-    },
-  });
-
-  const myTransform = new parser.Transform({
-    parser: new parser.Parser((source) =>
-      source
-        .split("\n")
-        .filter(/#/)
-        .separate(",")
-        .expect(3)
-        .assign(new Tables([table1, table2]))
-    ),
-  });
-
-  const myWritable = new stream.Writable({
-    defaultEncoding: "utf8",
+  const objectLog = new stream.Writable({
     objectMode: true,
-    write(chunk, encoding, callback) {
-      console.log(chunk);
-      callback();
+    write(object, _, done) {
+      console.log(object);
+      done();
     },
   });
 
-  myReadable.pipe(myTransform).pipe(myWritable);
+  const { Tables } = require("./lib/Tables");
+  const {
+    EmitterProcess,
+    ReadableProcess,
+    Parser,
+    TransformParser,
+  } = require("./lib/TextParsers");
+
+  const nbu = { bin: process.env.NBU_BIN };
+  // SUMMARY
+
+  const tables = new Tables({
+    bpdbjobs_summary: [
+      { masterServer: /^Summary of jobs on (\S+)/m, key: true },
+      { queued: /^Queued:\s+(\d+)/m },
+      { waiting: /^Waiting-to-Retry:\s+(\d+)/m },
+      { active: /^Active:\s+(\d+)/m },
+      { successful: /^Successful:\s+(\d+)/m },
+      { partial: /^Partially Successful:\s+(\d+)/m },
+      { failed: /^Failed:\s+(\d+)/m },
+      { incomplete: /^Incomplete:\s+(\d+)/m },
+      { suspended: /^Suspended:\s+(\d+)/m },
+      { total: /^Total:\s+(\d+)/m },
+    ],
+  });
+
+  const processDefinition = {
+    command: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
+    args: ["-summary", "-l"],
+  };
+  const parserDefinition = {
+    actionChain: (source) => source.expect(/^Summary/).match(tables),
+    splitBuffer: /(\r?\n){2}/m,
+  };
+  let proc;
+  try {
+    // Emitter
+    //    proc = new EmitterProcess(processDefinition);
+    //    const result = new Parser(parserDefinition).parse(await proc.execute());
+    //console.log(result);
+    // Stream
+    const parser = new Parser(parserDefinition);
+    proc = new ReadableProcess(processDefinition);
+    // Stream onData
+    //    await proc
+    //      .on("data", (data) => console.log(parser.buffer(data)))
+    //      .on("exit", () => console.log(parser.flush()))
+    //      .execute();
+    // Stream pipe
+    proc.pipe(new TransformParser({ parser })).pipe(objectLog);
+    await proc.execute();
+  } catch (error) {
+    console.log("E:", error);
+  } finally {
+    console.log(proc.status);
+  }
 }
-testTransform();
+test();
