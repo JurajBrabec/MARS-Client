@@ -106,7 +106,6 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
     onStatus,
   };
   let options;
-  let func;
   if (objectMode) {
     params.options = { objectMode };
     params.args = { name: "John" };
@@ -118,26 +117,24 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
   }
   try {
     switch (SourceClass) {
-      case emitter.Command:
-        break;
-      case emitter.Function:
-        params.func = function (success, failure, args) {
+      case emitter.Emitter:
+        params.command = function (success, failure, args) {
           success(args);
         };
         break;
       case readable.Function:
-        params.func = function (push, success, failure, args) {
-          for (let i = 1; i < 3; i++) push(args);
-          success();
+        params.read = function () {
+          for (let i = 1; i < 3; i++) this.push(args + i);
+          this.push(null);
         };
         break;
       case emitter.File:
       case readable.File:
-        params.options.fileName = "./package.json";
+        params.options.path = "./package.json";
         break;
       case emitter.Process:
       case readable.Process:
-        params.options.command = "dir";
+        params.options.file = "dir";
         params.options.args = ["-s"];
         break;
       case emitter.Sql:
@@ -151,15 +148,13 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
       case undefined:
       case process.stdout:
       case writable.Writable:
-        break;
-      case writable.Function:
-        func = function (chunk, encoding, success, failure) {
+        write = function (chunk, encoding, callback) {
           console.log(encoding, chunk);
-          return success();
+          callback();
         };
         break;
       case writable.File:
-        options.fileName = "./test.txt";
+        options.path = "./test.txt";
         break;
       case writable.Sql:
         options.database = new Database();
@@ -169,7 +164,6 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
     }
     switch (SourceClass) {
       case readable.Readable:
-      case readable.Function:
       case readable.File:
       case readable.Process:
       case readable.Sql:
@@ -180,7 +174,6 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
             destination = DestinationClass;
             break;
           case writable.Writable:
-          case writable.Function:
           case writable.File:
           case writable.Sql:
             destination = new DestinationClass(options, func);
@@ -197,34 +190,22 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
 }
 
 function allTests(aSync) {
-  [
-    emitter.Command,
-    emitter.Function,
-    emitter.File,
-    emitter.Process,
-    emitter.Sql,
-  ].forEach((Source) => {
-    //      test(aSync, true, Source);
-    //      test(aSync, false, Source);
-  });
-  [
-    readable.Readable,
-    readable.Function,
-    readable.File,
-    readable.Process,
-    readable.Sql,
-  ].forEach((Source) => {
-    [
-      undefined,
-      process.stdout,
-      writable.Writable,
-      writable.Function,
-      writable.Sql,
-    ].forEach((Destination) => {
-      test(aSync, true, Source, Destination);
-      //        test(aSync, false, Source, Destination);
-    });
-  });
+  [emitter.Emitter, emitter.File, emitter.Process, emitter.Sql].forEach(
+    (Source) => {
+      //      test(aSync, true, Source);
+      //      test(aSync, false, Source);
+    }
+  );
+  [readable.Readable, readable.File, readable.Process, readable.Sql].forEach(
+    (Source) => {
+      [undefined, process.stdout, writable.Writable, writable.Sql].forEach(
+        (Destination) => {
+          test(aSync, true, Source, Destination);
+          //        test(aSync, false, Source, Destination);
+        }
+      );
+    }
+  );
   console.log("\nDone.\n");
 }
 
@@ -233,44 +214,8 @@ const aSync = true;
 const objectMode = true;
 //const objectMode = true;
 
-//test(aSync, objectMode, Readable.Function, Writable.Sql);
+//test(aSync, objectMode, Readable.Readable, Writable.Sql);
 //allTests(aSync);
-
-function testParser() {
-  class CT1 extends parser.Parser {
-    chain = (source) =>
-      source
-        .expect(/^ITEM/)
-        .split(/^(?:ITEM)/m)
-        .trim()
-        .split(/(?:\nSUBITEM)/m)
-        .trim()
-        .separate(" ")
-        .unpivot()
-        .ucase()
-        .get();
-  }
-  let text = `ITEM a0 b0 c0\n`;
-  text += `SUBITEM d e f\n`;
-  text += `SUBITEM g h i\n`;
-  text += `ITEM a1 b1 c1\n`;
-  text += `SUBITEM d e f\n`;
-  text += `SUBITEM g h i\n`;
-
-  const ct = new CT1();
-
-  let result;
-  try {
-    result = ct.parse(text);
-  } catch (error) {
-    result = error;
-  }
-  console.log(result);
-  console.log(
-    `Level:${ct.level} Groups:${ct.groups} Rows:${ct.rowsTotal} (${ct.rows}/group) Fields:${ct.fields} Duration:${ct.elapsed}ms`
-  );
-}
-//testParser();
 
 function testLiteralStrings() {
   function literalString(strings, ...params) {
@@ -300,23 +245,23 @@ Peter,25,29`;
 }
 
 async function test() {
-  const stream = require("stream");
-  const objectLog = new stream.Writable({
-    objectMode: true,
-    write(object, _, done) {
-      console.log(object);
-      done();
-    },
-  });
-
   const { Tables } = require("./lib/Tables");
   const {
     EmitterProcess,
     ReadableProcess,
     Parser,
     TransformParser,
+    Writable,
   } = require("./lib/TextParsers");
 
+  const writable = new Writable({
+    defaultEncoding: "utf8",
+    objectMode: true,
+    write: (data, encoding, success, failure) => {
+      if (data) console.log(data);
+      success();
+    },
+  });
   const nbu = { bin: process.env.NBU_BIN };
   // SUMMARY
 
@@ -336,7 +281,7 @@ async function test() {
   });
 
   const processDefinition = {
-    command: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
+    file: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
     args: ["-summary", "-l"],
   };
   const parserDefinition = {
@@ -348,17 +293,17 @@ async function test() {
     // Emitter
     //    proc = new EmitterProcess(processDefinition);
     //    const result = new Parser(parserDefinition).parse(await proc.execute());
-    //console.log(result);
+    //    console.log(result);
     // Stream
     const parser = new Parser(parserDefinition);
     proc = new ReadableProcess(processDefinition);
     // Stream onData
     //    await proc
-    //      .on("data", (data) => console.log(parser.buffer(data)))
-    //      .on("exit", () => console.log(parser.flush()))
+    //      .on("data", (data) => writable.write(parser.buffer(data)))
+    //      .on("exit", () => writable.write(parser.flush()))
     //      .execute();
     // Stream pipe
-    proc.pipe(new TransformParser({ parser })).pipe(objectLog);
+    proc.pipe(new TransformParser({ parser })).pipe(writable);
     await proc.execute();
   } catch (error) {
     console.log("E:", error);
