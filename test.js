@@ -238,7 +238,7 @@ const objectMode = true;
 
 function testParser() {
   class CT1 extends parser.Parser {
-    _parse = (source) =>
+    chain = (source) =>
       source
         .expect(/^ITEM/)
         .split(/^(?:ITEM)/m)
