@@ -16,7 +16,7 @@ async function testMars() {
     console.log("Result:");
     console.log(util.inspect(result, false, null, true));
     console.log("Status:");
-    console.log(util.inspect(source.status, false, null, true));
+    console.log(util.inspect(source.status(), false, null, true));
   } catch (err) {
     if (
       err instanceof SyntaxError ||
@@ -45,7 +45,7 @@ function testSync(Object, params, callback) {
     .then(params.onResult)
     .catch(params.onError)
     .finally(() => {
-      params.onStatus(object.status);
+      params.onStatus(object.status());
       if (callback) callback();
     });
 }
@@ -62,7 +62,7 @@ async function testAsync(Object, params, callback) {
   } catch (error) {
     params.onError(error);
   } finally {
-    params.onStatus(object.status);
+    params.onStatus(object.status());
     if (callback) callback();
   }
 }
@@ -291,24 +291,24 @@ async function test() {
   let proc;
   try {
     // Emitter
-    //    proc = new EmitterProcess(processDefinition);
-    //    const result = new Parser(parserDefinition).parse(await proc.execute());
-    //    console.log(result);
+    proc = new EmitterProcess(processDefinition);
+    const result = new Parser(parserDefinition).parse(await proc.execute());
+    console.log(result);
     // Stream
-    const parser = new Parser(parserDefinition);
-    proc = new ReadableProcess(processDefinition);
+    //    const parser = new Parser(parserDefinition);
+    //  proc = new ReadableProcess(processDefinition);
     // Stream onData
     //    await proc
     //      .on("data", (data) => writable.write(parser.buffer(data)))
     //      .on("exit", () => writable.write(parser.flush()))
     //      .execute();
     // Stream pipe
-    proc.pipe(new TransformParser({ parser })).pipe(writable);
-    await proc.execute();
+    //proc.pipe(new TransformParser({ parser })).pipe(writable);
+    //await proc.execute();
   } catch (error) {
     console.log("E:", error);
   } finally {
-    console.log(proc.status);
+    console.log(proc.status());
   }
 }
 test();
