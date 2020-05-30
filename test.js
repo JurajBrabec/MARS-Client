@@ -291,44 +291,63 @@ async function test() {
   let proc;
   try {
     // Emitter
-    proc = new EmitterProcess(processDefinition);
-    const result = new Parser(parserDefinition).parse(await proc.execute());
-    console.log(result);
+    async function callEmitter() {
+      proc = new EmitterProcess(processDefinition);
+      const result = new Parser(parserDefinition).parse(await proc.execute());
+      const batch = tables.batchInsert(result);
+      console.log(batch);
+    }
     // Stream
-    //    const parser = new Parser(parserDefinition);
-    //  proc = new ReadableProcess(processDefinition);
-    // Stream onData
-    //    await proc
-    //      .on("data", (data) => writable.write(parser.buffer(data)))
-    //      .on("exit", () => writable.write(parser.flush()))
-    //      .execute();
-    // Stream pipe
-    //proc.pipe(new TransformParser({ parser })).pipe(writable);
-    //await proc.execute();
+    async function callStream(params) {
+      const parser = new Parser(parserDefinition);
+      proc = new ReadableProcess(processDefinition);
+      return params.pipe ? streamPipe() : streamEvents();
+      // Stream onData
+      async function streamEvents() {
+        await proc
+          //      .on("data",(data) => writable.write(parser.buffer(data)))
+          .on("data", (data) =>
+            writable.write(tables.batchInsert(parser.buffer(data)))
+          )
+          //.on("exit", () => writable.write(parser.flush()))
+          .on("exit", () => writable.write(tables.batchInsert(parser.flush())))
+          .execute();
+      }
+      // Stream pipe
+      async function streamPipe() {
+        proc.pipe(new TransformParser({ parser })).pipe(writable);
+        await proc.execute();
+      }
+    }
+    //    await callEmitter();
+    await callStream({ pipe: true });
   } catch (error) {
     console.log("E:", error);
   } finally {
     console.log(proc.status());
   }
 }
-//test();
-const { Table } = require("./lib/Tables/Table");
-const tables = new Tables([
-  {
-    table1: [{ field1: "string" }, { field2: "string" }],
-  },
-  {
-    table2: [{ field1: "string" }, { field2: "string" }],
-  },
-]);
+test();
 
-let row = ["s1", "s2", "s3", "s4"];
-let rows = [];
-rows.push(tables.assign(row));
-rows.push(tables.assign(row));
-rows.push(tables.assign(row));
-rows.push(tables.assign(row));
-console.log(rows);
+function batchTest() {
+  const { Table } = require("./lib/Tables/Table");
+  const tables = new Tables([
+    {
+      table1: [{ field1: "string" }, { field2: "string" }],
+    },
+    {
+      table2: [{ field1: "string" }, { field2: "string" }],
+    },
+  ]);
 
-const batch = tables.batch(rows);
-console.log(batch);
+  let row = ["s1", "s2", "s3", "s4"];
+  let rows = [];
+  rows.push(tables.assign(row));
+  rows.push(tables.assign(row));
+  rows.push(tables.assign(row));
+  rows.push(tables.assign(row));
+  console.log(rows);
+
+  const batch = tables.batchInsert(rows);
+  console.log(batch);
+}
