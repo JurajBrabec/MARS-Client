@@ -251,6 +251,7 @@ async function test() {
     ReadableProcess,
     Parser,
     TransformParser,
+    BatchInsert,
     Writable,
   } = require("./lib/TextParsers");
 
@@ -315,7 +316,8 @@ async function test() {
       }
       // Stream pipe
       async function streamPipe() {
-        proc.pipe(new TransformParser({ parser })).pipe(writable);
+        //        proc.pipe(new TransformParser({ parser })).pipe(writable);
+        proc.pipe(new BatchInsert({ parser, tables })).pipe(writable);
         await proc.execute();
       }
     }
