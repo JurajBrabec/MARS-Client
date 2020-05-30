@@ -311,4 +311,24 @@ async function test() {
     console.log(proc.status());
   }
 }
-test();
+//test();
+const { Table } = require("./lib/Tables/Table");
+const tables = new Tables([
+  {
+    table1: [{ field1: "string" }, { field2: "string" }],
+  },
+  {
+    table2: [{ field1: "string" }, { field2: "string" }],
+  },
+]);
+
+let row = ["s1", "s2", "s3", "s4"];
+let rows = [];
+rows.push(tables.assign(row));
+rows.push(tables.assign(row));
+rows.push(tables.assign(row));
+rows.push(tables.assign(row));
+console.log(rows);
+
+const batch = tables.batch(rows);
+console.log(batch);
