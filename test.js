@@ -314,8 +314,8 @@ async function test() {
           .on("data", (data) =>
             writable.write(tables.batchInsert(parser.buffer(data)))
           )
-          //.on("exit", () => writable.write(parser.flush()))
-          .on("exit", () => writable.write(tables.batchInsert(parser.flush())))
+          //.on("exit", () => writable.end(parser.flush()))
+          .on("exit", () => writable.end(tables.batchInsert(parser.flush())))
           .execute();
       }
       // Stream pipe
@@ -325,8 +325,8 @@ async function test() {
         await proc.execute();
       }
     }
-    //    await callEmitter();
-    //await callStream({ pipe: false });
+    //await callEmitter();
+    await callStream({ pipe: false });
   } catch (error) {
     console.log("E:", error);
   } finally {
