@@ -118,7 +118,7 @@ function test(aSync, objectMode, SourceClass, DestinationClass) {
   try {
     switch (SourceClass) {
       case emitter.Emitter:
-        params.command = function (success, failure, args) {
+        params.command = function (failure, progress, success, args) {
           success(args);
         };
         break;
