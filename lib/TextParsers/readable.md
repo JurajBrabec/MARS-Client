@@ -47,16 +47,16 @@ new Emitter( options )
 
 #### Options
 
-Object with a single property `command` that contains callback function with four arguments. Three callback functions `failure`, `progress` and `success`, and one optional `args` which is passed from the `.execute([args])` method.
+Object with a single property `command` that contains callback function with two arguments. Object `emit` with three callback functions `failure`, `progress` and `success`, and optional `args` which is passed from the `.execute([args])` method.
 
 ```
 {
-    command : ( failure, progress, success, args) => {
+    command : ( emit, args) => {
         let result;
-        progress( 10 )
+        emit.progress( 10 )
     ...
-        if ( error ) return failure( error );
-        return success( result );
+        if ( error ) return emit.failure( error );
+        emit.success( result );
     }
 }
 ```
