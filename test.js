@@ -262,9 +262,9 @@ async function test() {
   const writable = new Writable({
     defaultEncoding: "utf8",
     objectMode: true,
-    write: (data, encoding, success, failure) => {
-      if (data) console.log(data);
-      success();
+    write(chunk, encoding, callback) {
+      if (chunk) console.log(chunk);
+      callback();
     },
   });
   const nbu = { bin: process.env.NBU_BIN };
@@ -326,11 +326,11 @@ async function test() {
       }
     }
     //    await callEmitter();
-    await callStream({ pipe: true });
+    //await callStream({ pipe: false });
   } catch (error) {
     console.log("E:", error);
   } finally {
-    console.log(proc.status());
+    console.log(proc.status.get());
   }
 }
 test();
