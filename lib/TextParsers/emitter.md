@@ -10,7 +10,7 @@
 
 ## Emitter
 
-Basic EventEmitter class extension, where all functionality must be defined in the `command` function.
+Basic `EventEmitter` class extension, where all functionality must be defined in the `command` function.
 
 #### Usage
 
@@ -27,7 +27,7 @@ or asynchronously using _await_:
 
 ```
 try {
-    const result = await new Emitter( options ).execute( [ args );
+    const result = await new Emitter( options ).execute( [ args ] );
     // handle result
 } catch( error ) {
     //handle error
@@ -47,11 +47,15 @@ new Emitter( options )
 
 #### Options
 
-Object with a single property `command` that contains callback function with two arguments. Object `emit` with three callback functions `failure`, `progress` and `success`, and one optional `args` which is passed from the `.execute([args])` method.
+Object with a single mandatory property:
+
+- `command` contains callback function with two arguments:
+  - `emit` - Object with three callback functions `failure`, `progress` and `success`
+  - `args` _(optional)_ - argument that is passed from the `.execute([args])` method.
 
 ```
 {
-    command : ( emit, args) => {
+    command : ( emit, args ) => {
         let result;
         emit.progress( 10 )
     ...
@@ -73,6 +77,10 @@ The `.execute([args])` method returns a promise, that resolves by calling `succe
 - `failure (error)` - when `failure()` is called from within the `command` function, where `error` is the argument provided to the method.
 - `exit (status)` - After either success or failure, the `status` object contains detailed information.
 
+#### Methods
+
+- `execute([args])` - main method for executing the command
+
 #### Status
 
 - `source` - the class name
@@ -88,7 +96,9 @@ The `.execute([args])` method returns a promise, that resolves by calling `succe
 
 #### Options
 
-Object with a single property `path` that points to a text file (similar to `fs.readFile`).
+Object with a single mandatory property (similar to `fs.readFile`).
+
+- `path` - points to a text file
 
 ```
 {
@@ -115,7 +125,10 @@ In addition to `Emitter` class status, two more variables are present
 
 #### Options
 
-Object with two properties, `file` that points to a executable file and `args` - array of arguments (similar to `child.execFile`).
+Object with two properties (similar to `child.execFile`):
+
+- `file` - points to an executable file
+- `args` _(optional)_ - array of arguments
 
 ```
 {
@@ -132,11 +145,14 @@ In addition to `File` class status, one more variable is present
 
 ## Sql
 
-`Emitter` class extension, that executes a given `sql` command in MariaDB `database`.
+`Emitter` class extension, that executes a given `sql` command in MariaDB `database` and return the rows in `result`.
 
 #### Options
 
-Object with two properties, `database` that points to a MariaDB database object and `sql` - a SELECT command that reads data (uses to `database.query`).
+Object with two properties:
+
+- `database` - points to a MariaDB database object
+- `sql` - a SELECT command that reads data (uses `database.query`).
 
 ```
 {

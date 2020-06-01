@@ -326,7 +326,7 @@ async function test() {
       }
     }
     //await callEmitter();
-    await callStream({ pipe: false });
+    await callStream({ pipe: true });
   } catch (error) {
     console.log("E:", error);
   } finally {

@@ -10,7 +10,8 @@
 
 ## Readable
 
-Basic EventEmitter class extension, where all functionality must be defined in the `command` function.
+`Event` class extension with stream functionality, where all functionality must be defined in the `read` and `destroy` functions (similar to `stream.Readable`).  
+As it is meant to handle large data, there is no `result` at the end or in the `status`, data must be processed in chunks or piped to a _writable_ stream.
 
 #### Usage
 
@@ -18,66 +19,140 @@ First, instantiate the class with `{options}` and call `.execute([args])` method
 Then handle the returning promise:
 
 ```
-new Emitter( options ).execute( [ args ] )
-.then( result => { //handle result } )
-.catch( error => { //handle error  } );
+new Readable( options )
+    .on( "data", data=> //handle data)
+    .execute( [ args ] )
+        .then( () => { //handle success } )
+        .catch( error => { //handle error  } );
 ```
 
 or asynchronously using _await_:
 
 ```
 try {
-    const result = await new Emitter( options ).execute( [ args );
+    const result = await new Readable( options )
+        .on("data" data => //handle data )
+        .execute( [ args ] );
     // handle result
 } catch( error ) {
     //handle error
 }
 ```
 
-or by listening to events:
+or by piping to a _readable stream_:
 
 ```
-new Emitter( options )
-    .on( "progress", value => { //report progress } )
-    .on( "error", error =>{ //handle error } )
-    .on( "result", result => { //handle result } )
-    .on( "exit", status => { //report status } )
+new Readable( options )
+    .pipe( stream )
     .execute( [ args ] )
 ```
 
 #### Options
 
-Object with a single property `command` that contains callback function with two arguments. Object `emit` with three callback functions `failure`, `progress` and `success`, and optional `args` which is passed from the `.execute([args])` method.
+Object with following properties (similar to `stream.Readable`):
+
+- `read` - see `stream.Readable`
+- `destroy` _(optional)_ - see `stream.Readable`
+- `objectMode` _(optional)_ - `false` or `true`.
 
 ```
 {
-    command : ( emit, args) => {
-        let result;
-        emit.progress( 10 )
-    ...
-        if ( error ) return emit.failure( error );
-        emit.success( result );
+    read : ( ) => {
+        this.push( "test" );
+        this.push( null );
     }
 }
 ```
 
 #### Returns
 
-The `.execute([args])` method returns a promise, that resolves by calling `success(result)` or rejects by calling `failure(error)` from within the `command` function.
+The `.execute([args])` method returns a promise, that resolves when the readable stream ends (i.e. `.push(null)`) or rejects when the readable stream throw an error.
 
 #### Emits events
 
-- `execute(args)` - when the `.execute()` method is called, where `args` is the argument provided to the method.
-- `progress(value)` - when `progress()` is called from within the `command` function, where `value` is the argument provided to the method.
-- `success(result)`- when `success()` is called from within the `command` function, where `result` is the argument provided to the method.
-- `failure (error)` - when `failure()` is called from within the `command` function, where `error` is the argument provided to the method.
-- `exit (status)` - After either success or failure, the `status` object contains detailed information.
+In addition to `Emitter` class status, one more event is present
+
+- `data(chunk)` - whenever there is data available from the underlaying stream.
+
+#### Methods
+
+- `execute([args])` - main method for executing the command
+- `push(data)` - writes `string` or `object` (depending on `objectMode`). Push `null` to end the stream. See `stream.Readable`
+- `pipe(writable,options)` - pipe stream to writable stream. See `stream.Readable`
 
 #### Status
 
-- `source` - the class name
-- `args` - the `args` parameter provided to `.execute([args])` method
-- `state` - the state/result of the command. Either `pending` or `failure` or `success`.
-- `error` - In case of a failure, the `error` is in status as well.
-- `result` - In case of a success, the `result` is in status as well.
-- `duration` - number of miliseconds necessary to perform the operation.
+In addition to `Emitter` class status, following variables are present
+
+- `bytes` - number of bytes read (if the `eventMode` in _options_ is `false`)
+- `lines` - number of lines read (if the `eventMode` in _options_ is `false`)
+- `objects` - number of objects read (if the `eventMode` in _options_ is `true`)
+- `pipe` - contains the status of the piped _writable_ object (if piped)
+
+## File
+
+`Readble` class extension, that reads a given text `file` and streams its contents.
+
+#### Options
+
+Object with a following properties: (similar to `fs.readFile`)
+
+- `path` - points to a text file
+- `objectMode` _(optional)_ - `false` (default) or `true`.
+- `encoding` _(optional)_ - `utf8` by default.
+
+```
+{
+    path : /a/fileName
+}
+```
+
+## Process
+
+`File` class extension, that executes a given `process` with `args` and streams its output.
+
+#### Options
+
+Object with following properties (similar to `child.execFile`):
+
+- `file` - points to an executable file
+- `args` _(optional)_ - array of arguments
+- `encoding` _(optional)_ - `utf8` by default.
+- `objectMode` _(optional)_ - `false` (default) or `true`.
+
+```
+{
+    file : /a/executableName
+    args: [ arg1, arg2 ]
+}
+```
+
+#### Status
+
+In addition to `File` class status, one more variable is present
+
+- `code` - exit code of the process
+
+## Sql
+
+`Readable` class extension, that executes a given `sql` command in MariaDB `database` and streams the rows returned.
+
+#### Options
+
+Object with following properties:
+
+- `database` - points to a MariaDB database object
+- `sql` - a SELECT command that reads data (uses `database.query`).
+
+```
+{
+    database : new MariaDB(params)
+    sql: "select * form customers;"
+}
+```
+
+#### Status
+
+In addition to `Readable` class status, one more variable is present
+
+- `rows` - number of rows retrieved from the database
