@@ -226,6 +226,9 @@ function testLiteralStrings() {
   const s = literalString`s1 ${p1} s2 ${p2} s3`;
   console.log({ s });
 }
+function testArgs({ arg1 = 1, arg2 = 2 } = {}) {
+  console.log(arg1, arg2);
+}
 
 function parserExample() {
   let text = `#name,age,points
