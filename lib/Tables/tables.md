@@ -60,8 +60,7 @@ Basic class for handling table data. In general an array of `Fields` with few he
 Instantiate the class with `Table.create({options})`, select a table with `Table.use(table)`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, retrieve `batch` object with `Table.batch(rows)`.
 
 ```
-const table = Table.create( {table1:[ id:"number", name:"string" ] } );
-Tables.use( table );
+Table.create( {table1:[ id:"number", name:"string" ] } );
 const fields = Table.fields( )
 //  { id : number, name: string }
 const row = Table.row( )
@@ -72,6 +71,8 @@ const batch = Table.batch( [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
 //  { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
     }
+const table = Table.get( );
+Table.set(table).fields( );
 ```
 
 #### Options
@@ -86,6 +87,7 @@ Object with following properties:
 Following helper functions are available:
 
 - `Table.create({options})` -
+- `Table.get()` -
 - `Table.use(table)` -
 - `Table.fields()` -
 - `Table.row()` -
@@ -103,7 +105,7 @@ Array of `Table` objects with same helpers.
 Initialize the array with `Table.create({options})`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, retrieve `batch` object with `Table.batch(rows)`.
 
 ```
-const tables = Tables.create( {table1:[ id:"number", name:"string" ] } );
+Tables.create( {table1:[ id:"number", name:"string" ] } );
 const fields = Table.fields( )
 //  { id : number, name: string }
 const row = Tables.row( )
@@ -114,7 +116,8 @@ const batch = Tables.batch( [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
 //  { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
     }
-
+const tables = Tables.get( );
+Tables.use(table).fields( );
 ```
 
 #### Options
@@ -126,6 +129,7 @@ Array of `Table` definition objects.
 Following helper functions are available:
 
 - `Tables.create({options})` -
+- `Tables.get()` -
 - `Tables.use(tables)` -
 - `Tables.fields()` -
 - `Tables.row()` -
