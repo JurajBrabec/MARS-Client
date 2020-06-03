@@ -12,12 +12,12 @@ Basic class for handling table fields. Class methods should not be used direcly,
 
 #### Usage
 
-Instantiate the class with expanded `{options}` or use shorthanded `{options}` using helper `create(options)` and set values using `set(value)`.
+Instantiate the class with expanded `{options}` or use shorthanded `{options}` using helper `create(options)`, set value using `set(field, value)` and use the result` .
 
 ```
 const id = new Field( { name: "id", type: "number" } );
 const id = create( { id: "number" } );
-set( id, 1 );
+set( id, 1 ); //{ id : 1 }
 ```
 
 #### Options (using `new Field()`)
@@ -62,7 +62,8 @@ Returns a `Field` object.
 Two helper functions are available, for creating and for updating of the value.
 
 - `create({options})`- see above
-- `set(value)` - sets a new value for the field, doing type checking.
+- `set(field,value)` - sets a new value for the field, doing type checking.  
+  Returns an object in form `{name:value}` suitable for further use (row).
 
 ## Table
 
