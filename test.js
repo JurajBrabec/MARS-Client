@@ -32,7 +32,6 @@ async function testMars() {
 
 const dotenv = require("dotenv").config();
 const { emitter, readable, writable, parser } = require("./lib/TextParsers");
-const { Tables } = require("./lib/Tables");
 const { Database } = require("./lib/Database");
 
 function testSync(Object, params, callback) {
@@ -248,7 +247,7 @@ Peter,25,29`;
 }
 
 async function test() {
-  const { Tables } = require("./lib/Tables");
+  const Tables = require("./lib/Tables");
   const {
     EmitterProcess,
     ReadableProcess,
@@ -270,7 +269,7 @@ async function test() {
   const nbu = { bin: process.env.NBU_BIN };
   // SUMMARY
 
-  const tables = new Tables({
+  const tables = Tables.create({
     bpdbjobs_summary: [
       { masterServer: /^Summary of jobs on (\S+)/m, key: true },
       { queued: /^Queued:\s+(\d+)/m },
@@ -290,7 +289,8 @@ async function test() {
     args: ["-summary", "-l"],
   };
   const parserDefinition = {
-    actionChain: (source) => source.expect(/^Summary/).match(tables),
+    actionChain: (source) =>
+      source.expect(/^Summary/).match((rows) => Tables.match(tables, rows)), //TODO:
     splitBuffer: /(\r?\n){2}/m,
   };
   let proc;
@@ -299,7 +299,7 @@ async function test() {
     async function callEmitter() {
       proc = new EmitterProcess(processDefinition);
       const result = new Parser(parserDefinition).parse(await proc.execute());
-      const batch = tables.batchInsert(result);
+      const batch = Tables.batch(tables, result);
       console.log(batch);
     }
     // Stream
@@ -312,21 +312,21 @@ async function test() {
         await proc
           //      .on("data",(data) => writable.write(parser.buffer(data)))
           .on("data", (data) =>
-            writable.write(tables.batchInsert(parser.buffer(data)))
+            writable.write(Tables.batch(tables, parser.buffer(data)))
           )
           //.on("exit", () => writable.end(parser.flush()))
-          .on("exit", () => writable.end(tables.batchInsert(parser.flush())))
+          .on("exit", () => writable.end(Tables.batch(tables, parser.flush())))
           .execute();
       }
       // Stream pipe
       async function streamPipe() {
         //        proc.pipe(new TransformParser({ parser })).pipe(writable);
-        proc.pipe(new BufferedBatchInsert({ parser, tables })).pipe(writable);
+        proc.pipe(new BufferedBatchInsert({ parser, tables })).pipe(writable); //TODO:
         await proc.execute();
       }
     }
     //await callEmitter();
-    await callStream({ pipe: true });
+    await callStream({ pipe: false });
   } catch (error) {
     console.log("E:", error);
   } finally {
@@ -334,26 +334,3 @@ async function test() {
   }
 }
 test();
-
-function batchTest() {
-  const { Table } = require("./lib/Tables/Table");
-  const tables = new Tables([
-    {
-      table1: [{ field1: "string" }, { field2: "string" }],
-    },
-    {
-      table2: [{ field1: "string" }, { field2: "string" }],
-    },
-  ]);
-
-  let row = ["s1", "s2", "s3", "s4"];
-  let rows = [];
-  rows.push(tables.assign(row));
-  rows.push(tables.assign(row));
-  rows.push(tables.assign(row));
-  rows.push(tables.assign(row));
-  console.log(rows);
-
-  const batch = tables.batchInsert(rows);
-  console.log(batch);
-}
