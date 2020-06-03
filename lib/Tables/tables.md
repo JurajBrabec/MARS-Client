@@ -57,19 +57,18 @@ Basic class for handling table data. In general an array of `Fields` with few he
 #### Usage
 
 `const Table=require("./Table.js")`
-Instantiate the class with `Table.create({options})`, manipulate row data with `Table.assign(table,values)` or `Table.match(table,string)`, retrieve `batch` object with `Table.batch(sql,rows)`.
+Instantiate the class with `Table.create({options})`, select a table with `Table.use(table)`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, retrieve `batch` object with `Table.batch(rows)`.
 
 ```
 const table = Table.create( {table1:[ id:"number", name:"string" ] } );
-const fields = Table.fields( table )
+Tables.use( table );
+const fields = Table.fields( )
 //  { id : number, name: string }
-const row = Table.row( table )
+const row = Table.row( )
 //  { id : undefined, name : undefined }
-const row = Table.assign( table, [ 1, "John" ] );
+const row = Table.assign( [ 1, "John" ] );
 //  { id : 1, name: "John" }
-const sql = Table.sqlInsert( table );
-//  "insert into table1 (id,name) values(:id,:name);"
-const batch = Table.batch( sql, [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
+const batch = Table.batch( [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
 //  { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
     }
@@ -87,11 +86,12 @@ Object with following properties:
 Following helper functions are available:
 
 - `Table.create({options})` -
-- `Table.fields(table)` -
-- `Table.row(table)` -
-- `Table.assign(table,values)` -
-- `Table.match(table,string)` -
-- `Table.batch(table,rows)` -
+- `Table.use(table)` -
+- `Table.fields()` -
+- `Table.row()` -
+- `Table.assign(values)` -
+- `Table.match(string)` -
+- `Table.batch(rows)` -
 
 ## Tables
 
@@ -100,17 +100,17 @@ Array of `Table` objects with same helpers.
 #### Usage
 
 `const Tables=require("./Tables.js")`
-Initialize the array with `Table.create({options})`, manipulate row data with `Table.assign(table,values)` or `Table.match(table,string)`, retrieve `batch` object with `Table.batch(table,rows)`.
+Initialize the array with `Table.create({options})`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, retrieve `batch` object with `Table.batch(rows)`.
 
 ```
 const tables = Tables.create( {table1:[ id:"number", name:"string" ] } );
-const fields = Table.fields( table )
+const fields = Table.fields( )
 //  { id : number, name: string }
-const row = Tables.row( table )
+const row = Tables.row( )
 //  { id : undefined, name : undefined }
-const row = Tables.assign( table, [ 1, "John" ] );
+const row = Tables.assign( [ 1, "John" ] );
 //  { id : 1, name: "John" }
-const batch = Tables.batch( table, [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
+const batch = Tables.batch( [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
 //  { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
     }
@@ -126,8 +126,9 @@ Array of `Table` definition objects.
 Following helper functions are available:
 
 - `Tables.create({options})` -
-- `Tables.fields(tables)` -
-- `Tables.row(tables)` -
-- `Tables.assign(tables,values)` -
-- `Tables.match(tables,string)` -
-- `Tables.batch(tables,rows)` -
+- `Tables.use(tables)` -
+- `Tables.fields()` -
+- `Tables.row()` -
+- `Tables.assign(values)` -
+- `Tables.match(string)` -
+- `Tables.batch(rows)` -

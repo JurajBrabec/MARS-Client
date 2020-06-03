@@ -289,8 +289,7 @@ async function test() {
     args: ["-summary", "-l"],
   };
   const parserDefinition = {
-    actionChain: (source) =>
-      source.expect(/^Summary/).match((rows) => Tables.match(tables, rows)), //TODO:
+    actionChain: (source) => source.expect(/^Summary/).match(Tables),
     splitBuffer: /(\r?\n){2}/m,
   };
   let proc;
@@ -299,7 +298,7 @@ async function test() {
     async function callEmitter() {
       proc = new EmitterProcess(processDefinition);
       const result = new Parser(parserDefinition).parse(await proc.execute());
-      const batch = Tables.batch(tables, result);
+      const batch = Tables.batch(result);
       console.log(batch);
     }
     // Stream
@@ -312,10 +311,10 @@ async function test() {
         await proc
           //      .on("data",(data) => writable.write(parser.buffer(data)))
           .on("data", (data) =>
-            writable.write(Tables.batch(tables, parser.buffer(data)))
+            writable.write(Tables.batch(parser.buffer(data)))
           )
           //.on("exit", () => writable.end(parser.flush()))
-          .on("exit", () => writable.end(Tables.batch(tables, parser.flush())))
+          .on("exit", () => writable.end(Tables.batch(parser.flush())))
           .execute();
       }
       // Stream pipe
