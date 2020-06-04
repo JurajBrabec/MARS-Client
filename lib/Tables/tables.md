@@ -57,7 +57,7 @@ Basic class for handling table data. In general an array of `Fields` with few he
 #### Usage
 
 `const Table=require("./Table.js")`
-Instantiate the class with `Table.create({options})`, select a table with `Table.use(table)`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, retrieve `batch` object with `Table.batch(rows)`.
+Instantiate the class with `Table.create({options})`, select a table with `Table.use(table)`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, buffer rows with `Table.buffer(true)`, retrive buffer with `Table.flush()` or retrieve buffered `batch` object with `Table.batch()`.
 
 ```
 Table.create( {table1:[ id:"number", name:"string" ] } );
@@ -67,12 +67,15 @@ const row = Table.row( )
 //  { id : undefined, name : undefined }
 const row = Table.assign( [ 1, "John" ] );
 //  { id : 1, name: "John" }
-const batch = Table.batch( [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
+Table.buffer( true );
+Table.assign( [ 1, "John" ] );
+Table.assign( [ 2, "Peter" ] );
+const batch = Table.batch( )
 //  { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
     }
 const table = Table.get( );
-Table.set(table).fields( );
+Table.use(table).fields( );
 ```
 
 #### Options
@@ -91,9 +94,13 @@ Following helper functions are available:
 - `Table.use(table)` -
 - `Table.fields()` -
 - `Table.row()` -
+- `Table.buffer([true|false])` -
+- `Table.buffer()` -
+- `Table.flush()` -
+- `Table.isBuffering()` -
 - `Table.assign(values)` -
 - `Table.match(string)` -
-- `Table.batch(rows)` -
+- `Table.batch()` -
 
 ## Tables
 
@@ -102,22 +109,28 @@ Array of `Table` objects with same helpers.
 #### Usage
 
 `const Tables=require("./Tables.js")`
-Initialize the array with `Table.create({options})`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, retrieve `batch` object with `Table.batch(rows)`.
+Initialize the array with `Table.create({options})`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, , buffer rows with `Tables.buffer(true)`, retrieve buffer with `Tables.flush()` or retrieve `batch` object with `Table.batch(rows)`.
 
 ```
-Tables.create( {table1:[ id:"number", name:"string" ] } );
-const fields = Table.fields( )
-//  { id : number, name: string }
+Tables.create( {table1:[ id:"number", name:"string" ] }, {table2:[ id:"number", role:"string" ] } );
+const fields = Tables.fields( )
+// [ table1 : { id : "number", name: "string" }, table2: { id:"number", role: "string" } ]
 const row = Tables.row( )
-//  { id : undefined, name : undefined }
-const row = Tables.assign( [ 1, "John" ] );
-//  { id : 1, name: "John" }
-const batch = Tables.batch( [ {id:1,name:"John"}, {id:2,name:"Peter"} ] )
-//  { sql : "insert into table1 (id,name) values(:id,:name);",
+// [ table1 :] { id : undefined, name : undefined }, table2 : { id: "number", role: "string" } ]
+const row = Tables.assign( [ 1, "John", 1, "worker" ] );
+// [ table1: { id : 1, name: "John" }, table2: { id : 1, role : "worker"  } ]
+Tables.buffer( true );
+Tables.assign( [ 1, "John", 1, "worker" ] );
+Tables.assign( [ 2, "Peter", 2, "director" ] );
+const batch = Tables.batch( )
+// [ table 1: { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
+    },
+    table 2: { sql : "insert into table2 (id,role) values(:id,:role);",
+      rows : [ {id:1,role:"worker"},{id:2,role:"director"} ]
     }
 const tables = Tables.get( );
-Tables.use(table).fields( );
+Tables.use(t ables ).fields( );
 ```
 
 #### Options
@@ -133,6 +146,10 @@ Following helper functions are available:
 - `Tables.use(tables)` -
 - `Tables.fields()` -
 - `Tables.row()` -
+- `Tables.buffer([true|false])` -
+- `Tables.buffer()` -
+- `Tables.flush()` -
+- `Tables.isBuffering()` -
 - `Tables.assign(values)` -
 - `Tables.match(string)` -
-- `Tables.batch(rows)` -
+- `Tables.batch()` -
