@@ -12,8 +12,10 @@ Basic class for handling table fields. Class methods should not be used direcly,
 
 #### Usage
 
-`const Field=require("./Field")`
-Instantiate the class with `{options}` using helper `create(options)`, get result using `get(field, value)`.
+> `const Field=require("./Field")`
+
+Instantiate the class with `{options}` using helper `create(options)`  
+Get result using `get(field, value)`.
 
 ```
 const id = Field.create( { id: "number" } );
@@ -46,7 +48,7 @@ Returns a `Field` object.
 
 Two helper functions are available, for creating and for updating of the value.
 
-- `Field.create({options})`- see above
+- `Field.create({options})`- see above. Returns `this` (chainable).
 - `Field.get(field,value)` - sets a value for the field, doing type checking.  
   Returns an object in form `{name:value}` suitable for further use (row).
 
@@ -115,15 +117,15 @@ Object with following properties:
 
 Following helper functions are available:
 
-- `Table.create({options})` -
-- `Table.asArray()` -
-- `Table.asbatch()` -
-- `Table.asObjects()` -
-- `Table.get()` -
-- `Table.use(table)` -
+- `Table.create({options})` - Returns `this` (chainable).
+- `Table.asArray()` - Returns `this` (chainable).
+- `Table.asbatch()` - Returns `this` (chainable).
+- `Table.asObjects()` - Returns `this` (chainable).
+- `Table.get()` - Returns `Table` object.
+- `Table.use(table)` - Returns `this` (chainable).
 - `Table.fields()` -
 - `Table.row()` -
-- `Table.buffer([limit])` -
+- `Table.buffer([limit])` - Returns `this` (chainable).
 - `Table.buffer()` -
 - `Table.dirty()` -
 - `Table.flush()` -
@@ -186,14 +188,13 @@ Array of `Table` definition objects.
 
 Following helper functions are available:
 
-- `Tables.create({options})` -
-- `Tables.asArray()` -
-- `Tables.asbatch()` -
-- `Tables.asObjects()` -
-- `Tables.use(tables)` -
+- `Tables.create({options})` - Returns `this` (chainable).
+- `Tables.asArray()` - Returns `this` (chainable).
+- `Tables.asbatch()` - Returns `this` (chainable).
+- `Tables.asObjects()` - Returns `this` (chainable).
 - `Tables.fields()` -
 - `Tables.row()` -
-- `Tables.buffer([limit])` -
+- `Tables.buffer([limit])` - Returns `this` (chainable).
 - `Tables.buffer()` -
 - `Tables.dirty()` -
 - `Tables.flush()` -
