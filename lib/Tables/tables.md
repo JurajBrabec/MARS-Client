@@ -56,8 +56,11 @@ Basic class for handling table data. In general an array of `Fields` with few he
 
 #### Usage
 
-`const Table=require("./Table.js")`
-Instantiate the class with `Table.create({options})`, select a table with `Table.use(table)`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, buffer rows with `Table.buffer(true)`, retrive buffer with `Table.flush()` or retrieve buffered `batch` object with `Table.batch()`.
+> `const Table=require("./Table.js")`
+
+Instantiate the class with `Table.create({options})`  
+Define output format with `.asObject()`, `.asArray()` or `.asBatch()`  
+Manipulate row data with `Table.assign(values)` or `Table.match(string)`
 
 ```
 Table.create( {table1:[ id:"number", name:"string" ] } );
@@ -67,15 +70,38 @@ const row = Table.row( )
 //  { id : undefined, name : undefined }
 const row = Table.assign( [ 1, "John" ] );
 //  { id : 1, name: "John" }
-Table.buffer( true );
+```
+
+##### if you use buffering:
+
+Buffer rows with `Table.buffer([limit])`  
+Clear the buffer with `Table.clear()`  
+Check number of buffered rows with `Table.dirty()`  
+Retrieve buffer with `Table.buffer()` or `Table.flush()`  
+(flush is the same as buffer+clear)
+
+```
+Table.buffer( 10 ).asBatch( );
 Table.assign( [ 1, "John" ] );
+// null
 Table.assign( [ 2, "Peter" ] );
-const batch = Table.batch( )
+// null
+Table.dirty( );
+// 2
+const batch = Table.flush( )
 //  { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
     }
+```
+
+##### if you use more tables:
+
+Get current table reference with `Table.get()`  
+Select a previous table with `Table.use(table)`
+
+```
 const table = Table.get( );
-Table.use(table).fields( );
+Table.use(table);
 ```
 
 #### Options
@@ -90,17 +116,20 @@ Object with following properties:
 Following helper functions are available:
 
 - `Table.create({options})` -
+- `Table.asArray()` -
+- `Table.asbatch()` -
+- `Table.asObjects()` -
 - `Table.get()` -
 - `Table.use(table)` -
 - `Table.fields()` -
 - `Table.row()` -
-- `Table.buffer([true|false])` -
+- `Table.buffer([limit])` -
 - `Table.buffer()` -
+- `Table.dirty()` -
 - `Table.flush()` -
-- `Table.isBuffering()` -
 - `Table.assign(values)` -
 - `Table.match(string)` -
-- `Table.batch()` -
+- `Table.batch([rows])` -
 
 ## Tables
 
@@ -108,8 +137,7 @@ Array of `Table` objects with same helpers.
 
 #### Usage
 
-`const Tables=require("./Tables.js")`
-Initialize the array with `Table.create({options})`, manipulate row data with `Table.assign(values)` or `Table.match(string)`, , buffer rows with `Tables.buffer(true)`, retrieve buffer with `Tables.flush()` or retrieve `batch` object with `Table.batch(rows)`.
+> `const Tables=require("./Tables.js")`
 
 ```
 Tables.create( {table1:[ id:"number", name:"string" ] }, {table2:[ id:"number", role:"string" ] } );
@@ -119,10 +147,12 @@ const row = Tables.row( )
 // [ table1 :] { id : undefined, name : undefined }, table2 : { id: "number", role: "string" } ]
 const row = Tables.assign( [ 1, "John", 1, "worker" ] );
 // [ table1: { id : 1, name: "John" }, table2: { id : 1, role : "worker"  } ]
-Tables.buffer( true );
+Tables.buffer( 10 ).asBatch( );
 Tables.assign( [ 1, "John", 1, "worker" ] );
+// null
 Tables.assign( [ 2, "Peter", 2, "director" ] );
-const batch = Tables.batch( )
+// null
+const batch = Tables.flush( )
 // [ table 1: { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
     },
@@ -130,7 +160,7 @@ const batch = Tables.batch( )
       rows : [ {id:1,role:"worker"},{id:2,role:"director"} ]
     }
 const tables = Tables.get( );
-Tables.use(t ables ).fields( );
+Tables.use( tables ).fields( );
 ```
 
 #### Options
@@ -142,14 +172,17 @@ Array of `Table` definition objects.
 Following helper functions are available:
 
 - `Tables.create({options})` -
+- `Tables.asArray()` -
+- `Tables.asbatch()` -
+- `Tables.asObjects()` -
 - `Tables.get()` -
 - `Tables.use(tables)` -
 - `Tables.fields()` -
 - `Tables.row()` -
-- `Tables.buffer([true|false])` -
+- `Tables.buffer([limit])` -
 - `Tables.buffer()` -
+- `Tables.dirty()` -
 - `Tables.flush()` -
-- `Tables.isBuffering()` -
 - `Tables.assign(values)` -
 - `Tables.match(string)` -
-- `Tables.batch()` -
+- `Tables.batch([rows])` -

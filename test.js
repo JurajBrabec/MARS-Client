@@ -294,11 +294,12 @@ async function test() {
   };
   let proc;
   try {
+    Tables.buffer(3).asBatch();
     // Emitter
     async function callEmitter() {
       proc = new EmitterProcess(processDefinition);
-      const result = new Parser(parserDefinition).parse(await proc.execute());
-      const batch = Tables.batch(result);
+      let batch = new Parser(parserDefinition).parse(await proc.execute());
+      if (Tables.dirty()) batch = Tables.flush();
       console.log(batch);
     }
     // Stream
@@ -309,12 +310,20 @@ async function test() {
       // Stream onData
       async function streamEvents() {
         await proc
-          //      .on("data",(data) => writable.write(parser.buffer(data)))
-          .on("data", (data) =>
-            writable.write(Tables.batch(parser.buffer(data)))
-          )
+          //  .on("data", (data) => writable.write(parser.buffer(data)))
+          .on("data", (data) => writable.write(parser.buffer(data)))
           //.on("exit", () => writable.end(parser.flush()))
-          .on("exit", () => writable.end(Tables.batch(parser.flush())))
+          .on("exit", () => {
+            let result;
+            result = parser.flush();
+            console.log("Parser flush:", result);
+            if (Tables.dirty()) {
+              writable.write(result);
+              result = Tables.flush();
+              console.log("Tables flush:", result);
+            }
+            writable.end(result);
+          })
           .execute();
       }
       // Stream pipe
@@ -324,7 +333,7 @@ async function test() {
         await proc.execute();
       }
     }
-    //await callEmitter();
+    //    await callEmitter();
     await callStream({ pipe: false });
   } catch (error) {
     console.log("E:", error);
