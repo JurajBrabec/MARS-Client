@@ -59,7 +59,7 @@ Basic class for handling table data. In general an array of `Fields` with few he
 > `const Table=require("./Table.js")`
 
 Instantiate the class with `Table.create({options})`  
-Define output format with `.asObject()`, `.asArray()` or `.asBatch()`  
+Define output format with `Table.asObject()`, `Table.asArray()` or `Table.asBatch()`  
 Manipulate row data with `Table.assign(values)` or `Table.match(string)`
 
 ```
@@ -139,6 +139,10 @@ Array of `Table` objects with same helpers.
 
 > `const Tables=require("./Tables.js")`
 
+Instantiate the class with `Tables.create({options})`  
+Define output format with `Tables.asObject()`, `Tables.asArray()` or `Tables.asBatch()`  
+Manipulate row data with `Tables.assign(values)` or `Tables.match(string)`
+
 ```
 Tables.create( {table1:[ id:"number", name:"string" ] }, {table2:[ id:"number", role:"string" ] } );
 const fields = Tables.fields( )
@@ -147,11 +151,24 @@ const row = Tables.row( )
 // [ table1 :] { id : undefined, name : undefined }, table2 : { id: "number", role: "string" } ]
 const row = Tables.assign( [ 1, "John", 1, "worker" ] );
 // [ table1: { id : 1, name: "John" }, table2: { id : 1, role : "worker"  } ]
+```
+
+##### if you use buffering:
+
+Buffer rows with `Tables.buffer([limit])`  
+Clear the buffer with `Tables.clear()`  
+Check number of buffered rows with `Tables.dirty()`  
+Retrieve buffer with `Tables.buffer()` or `Tables.flush()`  
+(flush is the same as buffer+clear)
+
+```
 Tables.buffer( 10 ).asBatch( );
 Tables.assign( [ 1, "John", 1, "worker" ] );
 // null
 Tables.assign( [ 2, "Peter", 2, "director" ] );
 // null
+Tables.dirty( );
+// 4
 const batch = Tables.flush( )
 // [ table 1: { sql : "insert into table1 (id,name) values(:id,:name);",
       rows : [ {id:1,name:"John"},{id:2,name:"Peter"} ]
@@ -159,8 +176,6 @@ const batch = Tables.flush( )
     table 2: { sql : "insert into table2 (id,role) values(:id,:role);",
       rows : [ {id:1,role:"worker"},{id:2,role:"director"} ]
     }
-const tables = Tables.get( );
-Tables.use( tables ).fields( );
 ```
 
 #### Options
@@ -175,7 +190,6 @@ Following helper functions are available:
 - `Tables.asArray()` -
 - `Tables.asbatch()` -
 - `Tables.asObjects()` -
-- `Tables.get()` -
 - `Tables.use(tables)` -
 - `Tables.fields()` -
 - `Tables.row()` -
