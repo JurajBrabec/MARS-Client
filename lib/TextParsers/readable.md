@@ -72,6 +72,7 @@ The `.execute([args])` method returns a promise, that resolves when the readable
 
 In addition to `Emitter` class status, one more event is present
 
+- `close()` - once the underlaying stream is closed.
 - `data(chunk)` - whenever there is data available from the underlaying stream.
 
 #### Methods

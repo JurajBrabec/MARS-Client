@@ -28,24 +28,27 @@ Similar to inline chaining, with exception of:
 - _.parse( **text** )_ method is called
 
 ```
-actionChain = ( source )=>source._action( )[.action( )]
+parsing = ( source )=>source._action( )[.action( )]
 ```
 
 then
 
 ```
-result = new Parser( actionChain ).parse( text )
+result = new Parser( parsing ).parse( text )
 ```
 
 or
 
 ```
-parser = new Parser( { actionChain: actionChain, splitBuffer:<splitBuffer> } )
+flushing = ( ) => "EOF"
+parser = new Parser( { parsing, flushing, splitBuffer:<splitBuffer> } )
 ... // repeatedly supply text from stream
 partial = parser.buffer( text )
 if (partial) .... // process partial results
 ... // finally process the remaining text
-final = parser.flush( )
+if ( parser.dirty( ) ) buffer = parser.flush( )
+final = parser.end(  );
+// "EOF
 ```
 
 #### Extending class:
@@ -57,7 +60,8 @@ Similar to _callback function_, with exception of:
 
 ```
 MyParser extends Parser {
- chain( source )=> source.action( )[.action( )]
+ chain( source ) => source.action( )[.action( )]
+ end( ) => "EOF"
 }
 ...
 new MyParser( ).parse( text )
@@ -71,7 +75,7 @@ parser = new MyParser( { splitBuffer:<splitBuffer> } )
 partialResult = parser.buffer( text )
 if (partialResult) .... // process partial results
 ... // finally process the remaining text
-finalResult = parser.flush( )
+if ( parser.dirty( ) ) finalResult = parser.flush( )
 ```
 
 #### Methods
@@ -79,11 +83,11 @@ finalResult = parser.flush( )
 `.parse( [ text ] )` - This method should be used with _callback_ or _class extension_ and **must not** be used with _action chaining_.  
 Parses provided text immediately, return results.
 
-#### Method
-
-`.buffer( text )` - This method should be used with _callback_ or _class extension_ and **must not** be used with _action chaining_. Don't forget to call _.flush()_ at the end.  
+`.buffer( text )` - This method should be used with _callback_ or _class extension_ and **must not** be used with _action chaining_. Don't forget to call _.dirty()_/_.flush()_ at the end.  
 Text is stored in internal buffer until _splitBuffer_ occurs. Then the text until _splitBuffer_ will be parsed, rest will be stored in buffer.  
 Returns results or `false`.
+
+`.dirty( )` - This method shows whether _.flush( )_ is necessary or not.
 
 ### Parsing actions
 
@@ -164,9 +168,9 @@ Peter,25,29
 
 #### Buffer without _bufferSplit_
 
-`actionChain = ( source ) => source.split( "\n" ).filter( /#/ ).separate( "," ).get( )`
+`parsing = ( source ) => source.split( "\n" ).filter( /#/ ).separate( "," ).get( )`
 
-`parser = new Parser( actionChain )`
+`parser = new Parser( parsing )`
 
 `parser.buffer( "#name,age,points\n" ) // false`  
 `parser.buffer( "John,33,145\n" ) // false`  
@@ -184,9 +188,9 @@ Peter,25,29
 
 #### Buffer with _bufferSplit_
 
-`actionChain = ( source ) => source.filter( /#/ ).separate( "," ).get( )`
+`parsing = ( source ) => source.filter( /#/ ).separate( "," ).get( )`
 
-`parser = new Parser( { actionChain: actionChain, bufferSplit : "\n" } )`
+`parser = new Parser( { parsing, bufferSplit : "\n" } )`
 
 `parser.buffer( "#name,age,points\n" ) // [[]]`  
 `parser.buffer( "John,33,145\n" ) // [["John","33","145"]]`  
