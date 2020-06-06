@@ -246,15 +246,18 @@ Peter,25,29`;
   console.log(result);
 }
 
-async function test() {
+async function test({
+  stream = false,
+  pipe = false,
+  bufferParser = false,
+  bufferTables = 0,
+}) {
   const Tables = require("./lib/Tables");
   const {
     EmitterProcess,
     ReadableProcess,
     Parser,
     TransformParser,
-    BatchInsert,
-    BufferedBatchInsert,
     Writable,
   } = require("./lib/TextParsers");
 
@@ -262,7 +265,8 @@ async function test() {
     defaultEncoding: "utf8",
     objectMode: true,
     write(chunk, encoding, callback) {
-      if (chunk) console.log(chunk);
+      //if (chunk && chunk.length)
+      console.log(chunk);
       callback();
     },
   });
@@ -288,57 +292,51 @@ async function test() {
     file: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
     args: ["-summary", "-l"],
   };
+  const splitBuffer = bufferParser ? /(\r?\n){3}/m : /(\r?\n){2}/m;
   const parserDefinition = {
-    actionChain: (source) => source.expect(/^Summary/).match(Tables),
-    splitBuffer: /(\r?\n){2}/m,
+    parsing: (source) =>
+      source.expect(/^Summary/).match(Tables.buffer(bufferTables).asBatch()),
+    flushing: () => (Tables.dirty() ? Tables.flush() : null),
+    splitBuffer,
   };
+  const parser = new Parser(parserDefinition);
   let proc;
   try {
-    Tables.buffer(3).asBatch();
-    // Emitter
-    async function callEmitter() {
-      proc = new EmitterProcess(processDefinition);
-      let batch = new Parser(parserDefinition).parse(await proc.execute());
-      if (Tables.dirty()) batch = Tables.flush();
-      console.log(batch);
-    }
-    // Stream
-    async function callStream(params) {
-      const parser = new Parser(parserDefinition);
+    if (stream) {
+      // Stream
       proc = new ReadableProcess(processDefinition);
-      return params.pipe ? streamPipe() : streamEvents();
-      // Stream onData
-      async function streamEvents() {
+      if (pipe) {
+        // Stream pipe
+        console.log("Stream (pipe)");
+        proc.pipe(new TransformParser({ parser })).pipe(writable);
+        await proc.execute();
+      } else {
+        // Stream event
+        console.log("Stream (event)");
         await proc
-          //  .on("data", (data) => writable.write(parser.buffer(data)))
           .on("data", (data) => writable.write(parser.buffer(data)))
-          //.on("exit", () => writable.end(parser.flush()))
-          .on("exit", () => {
-            let result;
-            result = parser.flush();
-            console.log("Parser flush:", result);
-            if (Tables.dirty()) {
-              writable.write(result);
-              result = Tables.flush();
-              console.log("Tables flush:", result);
-            }
-            writable.end(result);
+          .once("close", () => {
+            if (parser.dirty()) writable.write(parser.flush());
+            writable.end(parser.end());
           })
           .execute();
       }
-      // Stream pipe
-      async function streamPipe() {
-        //        proc.pipe(new TransformParser({ parser })).pipe(writable);
-        proc.pipe(new BufferedBatchInsert({ parser, tables })).pipe(writable); //TODO:
-        await proc.execute();
-      }
+    } else {
+      // Emitter
+      console.log("Emitter");
+      proc = new EmitterProcess(processDefinition);
+      let batch = parser.parse(await proc.execute());
+      console.log("Batch:", batch);
     }
-    //    await callEmitter();
-    await callStream({ pipe: false });
   } catch (error) {
     console.log("E:", error);
   } finally {
     console.log(proc.status.get());
   }
 }
-test();
+test({
+  stream: true,
+  pipe: false,
+  bufferParser: true,
+  bufferTables: 1,
+});
