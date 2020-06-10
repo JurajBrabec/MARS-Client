@@ -247,10 +247,11 @@ Peter,25,29`;
 }
 
 async function test({
+  source,
   stream = false,
   pipe = false,
-  bufferParser = false,
-  bufferTables = 0,
+  bufferUntil = 0,
+  rowsPerBatch = 0,
 }) {
   const Tables = require("./lib/Tables");
   const {
@@ -265,46 +266,154 @@ async function test({
     defaultEncoding: "utf8",
     objectMode: true,
     write(chunk, encoding, callback) {
-      //if (chunk && chunk.length)
-      console.log(chunk);
+      //if (chunk && chunk.length)  console.log(chunk);
+      if (!Array.isArray(chunk)) chunk = [chunk];
+      onBatch(Array.isArray(chunk) ? chunk : [chunk]);
       callback();
     },
   });
   const nbu = { bin: process.env.NBU_BIN };
-  // SUMMARY
+  let binary;
+  let data;
+  let structure;
+  switch (source) {
+    case "summary":
+      binary = {
+        file: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
+        args: ["-summary", "-l"],
+      };
+      structure = {
+        bufferUntil,
+        delimiter: /(\r?\n){2}/m,
+        chain: (source) => source.expect(/^Summary/).match(Tables),
+        flush: () => Tables.end(),
+      };
+      data = {
+        bpdbjobs_summary: [
+          { masterServer: /^Summary of jobs on (\S+)/m, key: true },
+          { queued: /^Queued:\s+(\d+)/m },
+          { waiting: /^Waiting-to-Retry:\s+(\d+)/m },
+          { active: /^Active:\s+(\d+)/m },
+          { successful: /^Successful:\s+(\d+)/m },
+          { partial: /^Partially Successful:\s+(\d+)/m },
+          { failed: /^Failed:\s+(\d+)/m },
+          { incomplete: /^Incomplete:\s+(\d+)/m },
+          { suspended: /^Suspended:\s+(\d+)/m },
+          { total: /^Total:\s+(\d+)/m },
+        ],
+      };
+      break;
+    case "jobs":
+      binary = {
+        file: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
+        args: ["-report", "-most_columns"],
+      };
+      structure = {
+        bufferUntil,
+        delimiter: /r?\n/m,
+        chain: (source) =>
+          source.expect(/^\d+/).split().separate(",").assign(Tables),
+        flush: () => Tables.end(),
+      };
+      data = {
+        bpdbjobs_report: [
+          { jobId: "number", key: true },
+          { jobType: "number" },
+          { state: "number" },
+          { status: "number" },
+          { policy: "string" },
+          { schedule: "string" },
+          { client: "string" },
+          { server: "string" },
+          { started: "number" },
+          { elapsed: "number" },
+          { ended: "number" },
+          { stunit: "string" },
+          { tries: "number" },
+          { operation: "string" },
+          { kbytes: "number" },
+          { files: "number" },
+          { pathlastwritten: "string" },
+          { percent: "number" },
+          { jobpid: "number" },
+          { owner: "string" },
+          { subtype: "number" },
+          { policytype: "number" },
+          { scheduletype: "number" },
+          { priority: "number" },
+          { group: "string" },
+          { masterServer: "string" },
+          { retentionlevel: "number" },
+          { retentionperiod: "number" },
+          { compression: "number" },
+          { kbytestobewritten: "number" },
+          { filestobewritten: "number" },
+          { filelistcount: "number" },
+          { trycount: "number" },
+          { parentjob: "number" },
+          { kbpersec: "number" },
+          { copy: "number" },
+          { robot: "string" },
+          { vault: "string" },
+          { profile: "string" },
+          { session: "string" },
+          { ejecttapes: "string" },
+          { srcstunit: "string" },
+          { srcserver: "string" },
+          { srcmedia: "string" },
+          { dstmedia: "string" },
+          { stream: "number" },
+          { suspendable: "number" },
+          { resumable: "number" },
+          { restartable: "number" },
+          { datamovement: "number" },
+          { snapshot: "number" },
+          { backupid: "string" },
+          { killable: "number" },
+          { controllinghost: "number" },
+          { offhosttype: "number" },
+          { ftusage: "number" },
+          //        { queuereason: "number" },
+          { reasonstring: "string" },
+          { dedupratio: "float" },
+          { accelerator: "number" },
+          { instancedbname: "string" },
+          { rest1: "string" },
+          { rest2: "string" },
+        ],
+      };
+      break;
 
-  const tables = Tables.create({
-    bpdbjobs_summary: [
-      { masterServer: /^Summary of jobs on (\S+)/m, key: true },
-      { queued: /^Queued:\s+(\d+)/m },
-      { waiting: /^Waiting-to-Retry:\s+(\d+)/m },
-      { active: /^Active:\s+(\d+)/m },
-      { successful: /^Successful:\s+(\d+)/m },
-      { partial: /^Partially Successful:\s+(\d+)/m },
-      { failed: /^Failed:\s+(\d+)/m },
-      { incomplete: /^Incomplete:\s+(\d+)/m },
-      { suspended: /^Suspended:\s+(\d+)/m },
-      { total: /^Total:\s+(\d+)/m },
-    ],
-  });
+    default:
+      return;
+  }
+  function onBatch(batch) {
+    //console.log("Batch:", batch);
+    console.log("Batch length:", batch.length);
+    console.log(
+      "Rows:",
+      batch.reduce(
+        (rows, item) =>
+          rows + Object.keys(item).reduce((r, t) => r + item[t].rows.length, 0),
+        0
+      )
+    );
+  }
+  function onData(data) {
+    const buffer = parser.buffer(data);
+    if (buffer) writable.write(buffer);
+  }
+  function onClose() {
+    writable.end(parser.end());
+  }
 
-  const processDefinition = {
-    file: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
-    args: ["-summary", "-l"],
-  };
-  const splitBuffer = bufferParser ? /(\r?\n){3}/m : /(\r?\n){2}/m;
-  const parserDefinition = {
-    parsing: (source) =>
-      source.expect(/^Summary/).match(Tables.buffer(bufferTables).asBatch()),
-    flushing: () => (Tables.dirty() ? Tables.flush() : null),
-    splitBuffer,
-  };
-  const parser = new Parser(parserDefinition);
+  Tables.create(data).asBatch(rowsPerBatch);
+  const parser = new Parser(structure);
   let proc;
   try {
     if (stream) {
       // Stream
-      proc = new ReadableProcess(processDefinition);
+      proc = new ReadableProcess(binary);
       if (pipe) {
         // Stream pipe
         console.log("Stream (pipe)");
@@ -313,30 +422,64 @@ async function test({
       } else {
         // Stream event
         console.log("Stream (event)");
-        await proc
-          .on("data", (data) => writable.write(parser.buffer(data)))
-          .once("close", () => {
-            if (parser.dirty()) writable.write(parser.flush());
-            writable.end(parser.end());
-          })
-          .execute();
+        await proc.on("data", onData).once("close", onClose).execute();
       }
     } else {
       // Emitter
       console.log("Emitter");
-      proc = new EmitterProcess(processDefinition);
-      let batch = parser.parse(await proc.execute());
-      console.log("Batch:", batch);
+      proc = new EmitterProcess(binary);
+      let batch = parser.parse(await proc.execute()) || [];
+      if (Tables.dirty()) batch.push(Tables.flush());
+      onBatch(batch);
     }
   } catch (error) {
     console.log("E:", error);
   } finally {
-    console.log(proc.status.get());
+    console.log("Status:", proc.status.get());
   }
 }
 test({
+  rowsPerBatch: 1,
+  source: "jobs",
   stream: true,
   pipe: false,
-  bufferParser: true,
-  bufferTables: 1,
+  bufferUntil: 100,
 });
+
+/* 
+RowArray=[value,...]
+RowArrays=[RowArray,...]
+
+nullRow=null
+EmptyRow={}
+RowObject={field:value,...}
+nullRows=null
+EmptyRows=[]
+RowObjects=[RowObject,...]
+
+nullTable = null;
+emptyTable={}
+BatchTable={table:{sqlQuery,RowObjects}}
+nullTables=null
+emptyTables=[]
+BatchTables=[BatchObject]
+
+
+Database.batchWrite(BatchTable).fromObjects(BatchTables)
+<-Tables.asBatchTables().fromArray(RowObjects)
+<-Parser.asArray({delimiter=\n,parserChain:{}}).fromText({text})
+<-Command.asText({path})
+
+Database.batchWrite(BatchTable).fromObjects(BatchTables)
+<-Tables.asBatchTables().buffered({bufferSize:1024}).fromArray(RowObjects)
+<-Parser.asArray({delimiter=\n,parserChain:{},parserEnd:{}}).buffered({bufferSize:1024}).fromText({text})
+<-Command.outputStream({path})
+
+Database.batchWrite(BatchTable).fromPipe(Readable)
+<-Tables.asBatchTables().buffered({bufferSize:1024}).fromPipe(Readable)
+<-Parser.asArray({delimiter=\n,parserChain:{},parserEnd:{}}).buffered({bufferSize:1024}).fromPipe(Readable)
+<-Command.outputStream({path})
+
+database.endBatch(BatchTables|null)<-Tables.endBuffer(RowObjects|null)<-parser.endBuffer(text|null)<-command.endStream()
+
+ */
