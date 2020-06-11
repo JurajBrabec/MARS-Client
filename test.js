@@ -462,7 +462,7 @@ emptyTable={}
 BatchTable={table:{sqlQuery,RowObjects}}
 nullTables=null
 emptyTables=[]
-BatchTables=[BatchObject]
+BatchTables=[BatchTable]
 
 
 Database.batchWrite(BatchTable).fromObjects(BatchTables)
