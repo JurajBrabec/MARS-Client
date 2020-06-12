@@ -246,8 +246,8 @@ Peter,25,29`;
   console.log(result);
 }
 
+const nbu = require("./lib/Nbu");
 async function test({
-  source,
   stream = false,
   pipe = false,
   bufferUntil = 0,
@@ -272,123 +272,78 @@ async function test({
       callback();
     },
   });
-  const nbu = { bin: process.env.NBU_BIN };
-  let binary;
-  let data;
-  let structure;
-  switch (source) {
-    case "summary":
-      binary = {
-        file: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
-        args: ["-summary", "-l"],
-      };
-      structure = {
-        bufferUntil,
-        delimiter: /(\r?\n){2}/m,
-        chain: (source) => source.expect(/^Summary/).match(Tables),
-        flush: () => Tables.end(),
-      };
-      data = {
-        bpdbjobs_summary: [
-          { masterServer: /^Summary of jobs on (\S+)/m, key: true },
-          { queued: /^Queued:\s+(\d+)/m },
-          { waiting: /^Waiting-to-Retry:\s+(\d+)/m },
-          { active: /^Active:\s+(\d+)/m },
-          { successful: /^Successful:\s+(\d+)/m },
-          { partial: /^Partially Successful:\s+(\d+)/m },
-          { failed: /^Failed:\s+(\d+)/m },
-          { incomplete: /^Incomplete:\s+(\d+)/m },
-          { suspended: /^Suspended:\s+(\d+)/m },
-          { total: /^Total:\s+(\d+)/m },
-        ],
-      };
-      break;
-    case "jobs":
-      binary = {
-        file: [nbu.bin, "bin/admincmd/bpdbjobs.exe"].join("/"),
-        args: ["-report", "-most_columns"],
-      };
-      structure = {
-        bufferUntil,
-        delimiter: /r?\n/m,
-        chain: (source) =>
-          source.expect(/^\d+/).split().separate(",").assign(Tables),
-        flush: () => Tables.end(),
-      };
-      data = {
-        bpdbjobs_report: [
-          { jobId: "number", key: true },
-          { jobType: "number" },
-          { state: "number" },
-          { status: "number" },
-          { policy: "string" },
-          { schedule: "string" },
-          { client: "string" },
-          { server: "string" },
-          { started: "number" },
-          { elapsed: "number" },
-          { ended: "number" },
-          { stunit: "string" },
-          { tries: "number" },
-          { operation: "string" },
-          { kbytes: "number" },
-          { files: "number" },
-          { pathlastwritten: "string" },
-          { percent: "number" },
-          { jobpid: "number" },
-          { owner: "string" },
-          { subtype: "number" },
-          { policytype: "number" },
-          { scheduletype: "number" },
-          { priority: "number" },
-          { group: "string" },
-          { masterServer: "string" },
-          { retentionlevel: "number" },
-          { retentionperiod: "number" },
-          { compression: "number" },
-          { kbytestobewritten: "number" },
-          { filestobewritten: "number" },
-          { filelistcount: "number" },
-          { trycount: "number" },
-          { parentjob: "number" },
-          { kbpersec: "number" },
-          { copy: "number" },
-          { robot: "string" },
-          { vault: "string" },
-          { profile: "string" },
-          { session: "string" },
-          { ejecttapes: "string" },
-          { srcstunit: "string" },
-          { srcserver: "string" },
-          { srcmedia: "string" },
-          { dstmedia: "string" },
-          { stream: "number" },
-          { suspendable: "number" },
-          { resumable: "number" },
-          { restartable: "number" },
-          { datamovement: "number" },
-          { snapshot: "number" },
-          { backupid: "string" },
-          { killable: "number" },
-          { controllinghost: "number" },
-          { offhosttype: "number" },
-          { ftusage: "number" },
-          //        { queuereason: "number" },
-          { reasonstring: "string" },
-          { dedupratio: "float" },
-          { accelerator: "number" },
-          { instancedbname: "string" },
-          { rest1: "string" },
-          { rest2: "string" },
-        ],
-      };
-      break;
+  await nbu.masterServer;
+  console.log(nbu.masterServer);
 
-    default:
-      return;
-  }
+  const binary = {
+    file: [nbu.bin, "admincmd/bpflist.exe"].join("/"),
+    args: ["-l"],
+  };
+  const structure = {
+    delimiter: /^FILES /m,
+    chain: (source, target) =>
+      source
+        .split()
+        .trim()
+        .replace(/\*NULL\*/g, "")
+        .replace(/\r?\n/g, " ")
+        .expect(/^\d+/)
+        .quoted("/")
+        .separate(" ")
+        .expect(43)
+        .assign(target),
+    target: Tables,
+  };
+  const data = {
+    bpflist_backupid: [
+      { masterServer: nbu.masterServer, key: true },
+      { image_version: "number" },
+      { client_type: "number" },
+      { dummy1: "string", ignore: true },
+      { dummy2: "string", ignore: true },
+      { dummy3: "string", ignore: true },
+      { dummy4: "string", ignore: true },
+      { dummy5: "string", ignore: true },
+      { dummy6: "string", ignore: true },
+      { dummy7: "string", ignore: true },
+      { dummy8: "string", ignore: true },
+      { dummy9: "string", ignore: true },
+      { start_time: "number" },
+      { timeStamp: "number" },
+      { schedule_type: "number" },
+      { client: "string" },
+      { policy_name: "string" },
+      { backupId: "string", key: true },
+      { dummy10: "string", ignore: true },
+      { peer_name: "string" },
+      { lines: "number" },
+      { options: "number" },
+      { user_name: "string" },
+      { group_name: "string" },
+      { dummy11: "string", ignore: true },
+      { raw_partition_id: "number" },
+      { jobid: "number" },
+      { file_number: "number", key: true },
+      { compressed_size: "number" },
+      { path_length: "number" },
+      { data_length: "number" },
+      { block: "number" },
+      { in_image: "number" },
+      { raw_size: "number" },
+      { gb: "number" },
+      { device_number: "number" },
+      { path: "string" },
+      { directory_bits: "number" },
+      { owner: "string" },
+      { group: "string" },
+      { bytes: "number" },
+      { access_time: "number" },
+      { modification_time: "number" },
+      { inode_time: "number" },
+    ],
+  };
   function onBatch(batch) {
-    //console.log("Batch:", batch);
+    console.log("Batch:", batch);
     console.log("Batch length:", batch.length);
     console.log(
       "Rows:",
@@ -433,18 +388,58 @@ async function test({
       onBatch(batch);
     }
   } catch (error) {
-    console.log("E:", error);
+    console.log("Error:", error);
   } finally {
     console.log("Status:", proc.status.get());
   }
 }
-test({
-  rowsPerBatch: 1,
-  source: "jobs",
-  stream: true,
-  pipe: false,
-  bufferUntil: 100,
+//test({ rowsPerBatch: 2048, stream: false, pipe: true, bufferUntil: 1024 });
+
+const { Writable } = require("./lib/TextParsers");
+const destination = new Writable({
+  defaultEncoding: "utf8",
+  objectMode: true,
+  write(chunk, encoding, callback) {
+    console.log(chunk);
+    callback();
+  },
 });
+
+async function masterServer() {
+  console.log("Master Server:", await nbu.masterServer);
+}
+function nbuPromise(params) {
+  nbu.masterServer
+    .then(() => nbu.summary(params))
+    .then((batch) => console.log("Batch:", batch))
+    .catch((error) => console.log("Error:", error));
+}
+function nbuPromiseStream(params) {
+  nbu.masterServer
+    .then(() => nbu.pipe(destination).files(params))
+    .then(() => console.log("Done"))
+    .catch((error) => console.log("Error:", error));
+}
+
+async function nbuAsync(params) {
+  try {
+    await nbu.masterServer;
+    const batch = await nbu.summary(params);
+    console.log("Batch:", batch);
+  } catch (error) {
+    console.log("Error:", error);
+  }
+}
+async function nbuAsyncStream(params) {
+  try {
+    await nbu.masterServer;
+    await nbu.pipe(destination).files(params);
+  } catch (error) {
+    console.log("Error:", error);
+  }
+}
+
+nbuAsync({ jobId: 2 });
 
 /* 
 RowArray=[value,...]
