@@ -1,54 +1,64 @@
 const nbu = require("./lib/Nbu");
+const Tables = require("./lib/Tables");
+const {
+  EmitterProcess,
+  ReadableProcess,
+  Parser,
+  TransformParser,
+  Writable,
+} = require("./lib/TextParsers");
+
+const destination = new Writable({
+  defaultEncoding: "utf8",
+  objectMode: true,
+  write(chunk, encoding, callback) {
+    console.log(chunk);
+    callback();
+  },
+});
+
+const writable = new Writable({
+  defaultEncoding: "utf8",
+  objectMode: true,
+  write(chunk, encoding, callback) {
+    //if (chunk && chunk.length)  console.log(chunk);
+    if (!Array.isArray(chunk)) chunk = [chunk];
+    onBatch(Array.isArray(chunk) ? chunk : [chunk]);
+    callback();
+  },
+});
+
+function onBatch(batch) {
+  console.log("Batch:", batch);
+  console.log("Batch length:", batch.length);
+  console.log(
+    "Rows:",
+    batch.reduce(
+      (rows, item) =>
+        rows + Object.keys(item).reduce((r, t) => r + item[t].rows.length, 0),
+      0
+    )
+  );
+}
+function onData(data) {
+  const buffer = parser.buffer(data);
+  if (buffer) writable.write(buffer);
+}
+function onClose() {
+  writable.end(parser.end());
+}
+
 async function test({
   stream = false,
   pipe = false,
-  bufferUntil = 0,
-  rowsPerBatch = 0,
+  bufferUntil = 1,
+  rowsPerBatch = 1,
 }) {
-  const Tables = require("./lib/Tables");
-  const {
-    EmitterProcess,
-    ReadableProcess,
-    Parser,
-    TransformParser,
-    Writable,
-  } = require("./lib/TextParsers");
-
-  const writable = new Writable({
-    defaultEncoding: "utf8",
-    objectMode: true,
-    write(chunk, encoding, callback) {
-      //if (chunk && chunk.length)  console.log(chunk);
-      if (!Array.isArray(chunk)) chunk = [chunk];
-      onBatch(Array.isArray(chunk) ? chunk : [chunk]);
-      callback();
-    },
-  });
   await nbu.masterServer;
-  console.log(nbu.masterServer);
+  console.log("master Server:", nbu.masterServer);
 
-  const { Media } = require("./lib/Nbu/Bpimmedia")({ nbu, target: Tables });
-  const { binary, structure, data } = Media;
-
-  function onBatch(batch) {
-    console.log("Batch:", batch);
-    console.log("Batch length:", batch.length);
-    console.log(
-      "Rows:",
-      batch.reduce(
-        (rows, item) =>
-          rows + Object.keys(item).reduce((r, t) => r + item[t].rows.length, 0),
-        0
-      )
-    );
-  }
-  function onData(data) {
-    const buffer = parser.buffer(data);
-    if (buffer) writable.write(buffer);
-  }
-  function onClose() {
-    writable.end(parser.end());
-  }
+  const { Clients } = require("./lib/Nbu/Bpplclients")({ nbu, target: Tables });
+  const { binary, structure, data } = Clients;
 
   Tables.create(data).asBatch(rowsPerBatch);
   const parser = new Parser(structure);
@@ -81,21 +91,7 @@ async function test({
     console.log("Status:", proc.status.get());
   }
 }
-test({ rowsPerBatch: 2048, stream: true, pipe: true, bufferUntil: 1 });
 
-const { Writable } = require("./lib/TextParsers");
-const destination = new Writable({
-  defaultEncoding: "utf8",
-  objectMode: true,
-  write(chunk, encoding, callback) {
-    console.log(chunk);
-    callback();
-  },
-});
-
-async function masterServer() {
-  console.log("Master Server:", await nbu.masterServer);
-}
 function nbuPromise(params) {
   nbu.masterServer
     .then(() => nbu.summary(params))
@@ -111,8 +107,8 @@ function nbuPromiseStream(params) {
 
 async function nbuAsync(params) {
   try {
-    await nbu.masterServer;
-    const batch = await nbu.summary(params);
+    console.log("Master Server:", await nbu.masterServer);
+    const batch = await nbu.clients1(params);
     console.log("Batch:", batch);
   } catch (error) {
     console.log("Error:", error);
@@ -120,14 +116,16 @@ async function nbuAsync(params) {
 }
 async function nbuAsyncStream(params) {
   try {
-    await nbu.masterServer;
-    await nbu.pipe(destination).files(params);
+    console.log("Master Server:", await nbu.masterServer);
+    await nbu.pipe(destination).clients(params);
   } catch (error) {
     console.log("Error:", error);
   }
 }
 
-//nbuAsyncStream({ jobId: 2 });
+nbuAsync({ jobId: 2 });
+
+//test({ rowsPerBatch: 2048, stream: true, pipe: true });
 
 /* 
 RowArray=[value,...]
