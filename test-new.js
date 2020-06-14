@@ -117,7 +117,7 @@ async function nbuAsync(params) {
 async function nbuAsyncStream(params) {
   try {
     console.log("Master Server:", await nbu.masterServer);
-    await nbu.pipe(destination).images(params);
+    await nbu.pipe(destination).files(params);
   } catch (error) {
     console.log("Error:", error);
   }
