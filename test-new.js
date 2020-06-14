@@ -108,7 +108,7 @@ function nbuPromiseStream(params) {
 async function nbuAsync(params) {
   try {
     console.log("Master Server:", await nbu.masterServer);
-    const batch = await nbu.clients1(params);
+    const batch = await nbu.clients(params);
     console.log("Batch:", batch);
   } catch (error) {
     console.log("Error:", error);
@@ -117,13 +117,13 @@ async function nbuAsync(params) {
 async function nbuAsyncStream(params) {
   try {
     console.log("Master Server:", await nbu.masterServer);
-    await nbu.pipe(destination).clients(params);
+    await nbu.pipe(destination).images(params);
   } catch (error) {
     console.log("Error:", error);
   }
 }
 
-nbuAsync({ jobId: 2 });
+nbuAsyncStream({ all: true });
 
 //test({ rowsPerBatch: 2048, stream: true, pipe: true });
 
