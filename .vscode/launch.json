@@ -20,15 +20,15 @@
       "runtimeExecutable": "P:/PortableApps/NodeJSPortable/App/node",
       "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}\\src\\index.js"
-    }
+    },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch Script",
       "runtimeExecutable": "P:/PortableApps/NodeJSPortable/App/node",
       "skipFiles": ["<node_internals>/**"],
-      "program": "${file}"
-      "env":{"DEBUG":"*"}
+      "program": "${file}",
+      "env": { "DEBUG": "*" }
     }
   ]
 }

@@ -117,7 +117,7 @@ async function nbuAsync(params) {
 async function nbuAsyncStream(params) {
   try {
     console.log("Master Server:", await nbu.masterServer);
-    await nbu.pipe(destination).files(params);
+    await nbu.pipe(destination).jobs(params);
   } catch (error) {
     console.log("Error:", error);
   }
@@ -128,39 +128,58 @@ nbuAsyncStream({ all: true });
 //test({ rowsPerBatch: 2048, stream: true, pipe: true });
 
 /* 
-RowArray=[value,...]
-RowArrays=[RowArray,...]
 
-nullRow=null
-EmptyRow={}
-RowObject={field:value,...}
-nullRows=null
-EmptyRows=[]
-RowObjects=[RowObject,...]
+ParsedBlock = [value,...]
+ParsedData = [ParsedBlock,...]
+ParsedData = [[value,...],...]
 
-nullTable = null;
-emptyTable={}
-BatchTable={table:{sqlQuery,RowObjects}}
-nullTables=null
-emptyTables=[]
-BatchTables=[BatchTable]
+TableField = {name:value,...}
+TableRow = {TableField,...}
+TableRow = {field:value,...}
+Table = {name:[TableRow,...]}
+Table = {name:[{field:value,...},...]}
+TableSet = {Table,...}
+TableSet = {table:[{field:value,...},...],...}
+
+Command({path,args})
+.getOutput()
+.onData(text)
+.onEnd()
+.onError(error)
+.pipe(stream)
+
+Parser({delimiter,chain})
+.parseText(text)
+.onData(ParsedData)
+.onEnd()
+.onError(error)
+.pipe(stream)
+
+Tables({tables})
+.insertSql()
+.insertData(ParsedData)
+.onData(TableSet)
+.onEnd()
+.onError(error)
+.pipe(stream)
+
+Database({database,batchSize})
+.insertBatch(Batch)
 
 
-Database.batchWrite(BatchTable).fromObjects(BatchTables)
-<-Tables.asBatchTables().fromArray(RowObjects)
-<-Parser.asArray({delimiter=\n,parserChain:{}}).fromText({text})
-<-Command.asText({path})
+Command({path,args}).output() // text
+Parser({delimiter,chain}).parse(text) // ParsedData array
+Tables({tables}).insert(rows) // TableSet object
+Tables().batch(Database())
 
-Database.batchWrite(BatchTable).fromObjects(BatchTables)
-<-Tables.asBatchTables().buffered({bufferSize:1024}).fromArray(RowObjects)
-<-Parser.asArray({delimiter=\n,parserChain:{},parserEnd:{}}).buffered({bufferSize:1024}).fromText({text})
-<-Command.outputStream({path})
+Command({path,args}).onData().onEnd() // text
+Parser({delimiter,chain}).onData().onEnd() // ParsedData array
+Tables({tables}).onData().onEnd() // TableSet object
+Tables().batch(Database())
 
-Database.batchWrite(BatchTable).fromPipe(Readable)
-<-Tables.asBatchTables().buffered({bufferSize:1024}).fromPipe(Readable)
-<-Parser.asArray({delimiter=\n,parserChain:{},parserEnd:{}}).buffered({bufferSize:1024}).fromPipe(Readable)
-<-Command.outputStream({path})
-
-database.endBatch(BatchTables|null)<-Tables.endBuffer(RowObjects|null)<-parser.endBuffer(text|null)<-command.endStream()
+Command({path,args}).pipe() // stream
+Parser({delimiter,chain}).pipe() // stream
+Tables({tables}).pipe() // stream
+Tables().batch(Database())
 
  */
