@@ -2,15 +2,16 @@ const debug = require("debug")("commmand");
 const EventEmitter = require("events");
 const { execFile } = require("child_process");
 const fs = require("fs");
-const stream = require("stream");
+const { PassThrough } = require("stream");
 
 class Command {
   constructor(options) {
+    const isStreaming = options.read !== undefined;
     debug("constructor", options);
     options = {
       ...{ command: this._command, destroy: this._destroy, read: this._read },
       ...options,
-      ...{ streaming: null, result: "" },
+      ...{ isStreaming, result: "" },
     };
     this._command = options.command;
     this._read = options.read;
@@ -20,57 +21,66 @@ class Command {
     delete options.destroy;
     Object.assign(this, options);
     this._emitter = new EventEmitter();
-    this._stream = new stream.Readable({
+    this._stream = new PassThrough({
       ...options,
       ...{ destroy: this._destroy.bind(this), read: this._read.bind(this) },
     });
     return this;
   }
-  _command(emit, ...args) {
-    emit.end();
+  _command(...args) {
+    debug("_commmand", args);
+    this.data("test");
+    if (1) throw new Error("TEST");
+    this.end();
   }
   _destroy(error, callback) {
     debug("destroy", error);
     if (callback) callback(error);
   }
   _read(size) {
-    debug("read", size);
+    debug("_read", size);
     this.push("test");
-    if (error) this.destroy(error);
+    if (1) throw new Error("TEST");
     this.push(null);
   }
   data(...data) {
     data = data.join("");
     debug("data", data);
     this.emit("data", data);
-    if (!this.streaming) this.result += data;
+    if (!this.isStreaming) this.result += data;
   }
   end() {
-    if (this.status !== undefined) return;
+    if (this.status !== undefined) return this;
     this.status = 0;
     debug("end", this.status);
     this.progress(100);
     this.emit("end", this.status);
-    process.nextTick(this.resolve, this.streaming ? this.status : this.result);
+    if (this.resolve)
+      process.nextTick(
+        this.resolve,
+        this.isStreaming ? this.status : this.result
+      );
+    return this;
   }
   emit(event, ...args) {
-    debug("emit", event, args);
+    debug("emit", event, event === "error" ? args[0].message || args[0] : args);
     this._emitter.emit(event, ...args);
   }
   error(error) {
-    if (this.status !== undefined) return;
+    if (this.status !== undefined) return this;
     this.status = 1;
-    debug("error", error);
+    debug("error", error.message || error);
     this.emit("error", error);
-    process.nextTick(this.reject, error);
+    if (this.reject) process.nextTick(this.reject, error);
+    return this;
   }
   execute(...args) {
-    debug("execute", args);
     return new Promise((resolve, reject) => {
+      if (this.isStreaming) return reject(new Error("Command streaming."));
+      debug("execute", args);
       this.resolve = resolve;
       this.reject = reject;
       try {
-        this.streaming = false;
         this.progress(0);
         this._command(...args);
         this.end();
@@ -90,11 +100,11 @@ class Command {
     return this;
   }
   pipe(destination, options) {
-    if (!this.streaming) return;
+    if (!this.isStreaming) throw new Error("Command not streaming.");
     debug("pipe", destination.constructor, options);
     destination
       .once("end", (status) => this.end(status))
-      .once("error", (error) => this.error(error));
+      .once("error", (error) => this.error(error.message || error));
     return this._stream.pipe(destination, options);
   }
   progress(value, count) {
@@ -103,22 +113,26 @@ class Command {
     this.emit("progress", value);
   }
   push(chunk, encoding) {
-    if (!this.streaming) return;
+    if (!this.isStreaming) throw new Error("Command not streaming.");
     debug("push", chunk, encoding);
     this._stream.push(chunk, encoding);
   }
+  run(...args) {
+    debug("run", args);
+    return this.isStreaming ? this.stream() : this.execute(...args);
+  }
   stream() {
-    debug("stream");
     return new Promise((resolve, reject) => {
+      if (!this.isStreaming) return reject(new Error("Command not streaming."));
+      debug("stream");
       this.resolve = resolve;
       this.reject = reject;
       try {
-        this.streaming = true;
         this.progress(0);
         this._stream
           .once("close", () => debug(">close"))
           .on("data", (chunk) => debug(">data", chunk))
-          .once("error", (error) => debug(">error", error))
+          .once("error", (error) => debug(">error", error.message || error))
           .once("end", () => debug(">end"))
           .on("resume", () => debug(">resume"))
           .once("close", () => this.end())
@@ -201,11 +215,9 @@ module.exports = {
 
 debug.enabled = true;
 const command = new Command({
-  command(object) {
+  command(data) {
     this.progress(1, 9);
-    this.data("executed with ", object.a);
-    this.progress(4, 9);
-    this.data("ended with ", ...object.b);
+    this.data("executed with ", data);
     this.end();
   },
   encoding: "utf8",
@@ -215,12 +227,11 @@ const command = new Command({
   },
 })
   .on("data", (data) => console.log(">Data:", data))
-  .once("error", (error) => console.log(">Error:", error))
+  .once("error", (error) => console.log(">Error:", error.message || error))
   .once("end", (status) => console.log(">End", status))
   .on("progress", (progress) => console.log(">Progress:", progress));
-//.execute({ a: "A", b: "B" })
 command.pipe(process.stdout);
 command
-  .stream()
+  .run()
   .then((result) => console.log("Result:", result))
   .catch((error) => console.log("Error:", error));
