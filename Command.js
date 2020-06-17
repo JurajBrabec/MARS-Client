@@ -9,16 +9,16 @@ class Command {
     const isStreaming = options.read !== undefined;
     debug("constructor", options);
     options = {
-      ...{ command: this._command, destroy: this._destroy, read: this._read },
+      ...{ destroy: this._destroy, read: this._read, run: this._run },
       ...options,
       ...{ isStreaming, result: "" },
     };
-    this._command = options.command;
-    this._read = options.read;
     this._destroy = options.destroy;
-    delete options.command;
-    delete options.read;
+    this._read = options.read;
+    this._run = options.run;
     delete options.destroy;
+    delete options.read;
+    delete options.run;
     Object.assign(this, options);
     this._emitter = new EventEmitter();
     this._stream = new PassThrough({
@@ -26,12 +26,6 @@ class Command {
       ...{ destroy: this._destroy.bind(this), read: this._read.bind(this) },
     });
     return this;
-  }
-  _command(...args) {
-    debug("_commmand", args);
-    this.data("test");
-    if (1) throw new Error("TEST");
-    this.end();
   }
   _destroy(error, callback) {
     debug("destroy", error);
@@ -42,6 +36,12 @@ class Command {
     this.push("test");
     if (1) throw new Error("TEST");
     this.push(null);
+  }
+  _run(...args) {
+    debug("_commmand", args);
+    this.data("test");
+    if (1) throw new Error("TEST");
+    this.end();
   }
   data(...data) {
     data = data.join("");
@@ -74,21 +74,6 @@ class Command {
     if (this.reject) process.nextTick(this.reject, error);
     return this;
   }
-  execute(...args) {
-    return new Promise((resolve, reject) => {
-      if (this.isStreaming) return reject(new Error("Command streaming."));
-      debug("execute", args);
-      this.resolve = resolve;
-      this.reject = reject;
-      try {
-        this.progress(0);
-        this._command(...args);
-        this.end();
-      } catch (error) {
-        this.error(error);
-      }
-    });
-  }
   on(event, listener) {
     debug("on", event, listener);
     this._emitter.on(event, listener);
@@ -119,26 +104,26 @@ class Command {
   }
   run(...args) {
     debug("run", args);
-    return this.isStreaming ? this.stream() : this.execute(...args);
-  }
-  stream() {
     return new Promise((resolve, reject) => {
-      if (!this.isStreaming) return reject(new Error("Command not streaming."));
-      debug("stream");
       this.resolve = resolve;
       this.reject = reject;
       try {
         this.progress(0);
-        this._stream
-          .once("close", () => debug(">close"))
-          .on("data", (chunk) => debug(">data", chunk))
-          .once("error", (error) => debug(">error", error.message || error))
-          .once("end", () => debug(">end"))
-          .on("resume", () => debug(">resume"))
-          .once("close", () => this.end())
-          .on("data", (chunk) => this.data(chunk))
-          .once("error", (error) => this.error(error))
-          .once("end", () => this.end());
+        if (this.isStreaming) {
+          this._stream
+            .once("close", () => debug(">close"))
+            .on("data", (chunk) => debug(">data", chunk))
+            .once("error", (error) => debug(">error", error.message || error))
+            .once("end", () => debug(">end"))
+            .on("resume", () => debug(">resume"))
+            .once("close", () => this.end())
+            .on("data", (chunk) => this.data(chunk))
+            .once("error", (error) => this.error(error))
+            .once("end", () => this.end());
+        } else {
+          this._run(...args);
+          this.end();
+        }
       } catch (error) {
         this.error(error);
       }
@@ -148,7 +133,9 @@ class Command {
 
 class File extends Command {
   constructor(options) {
-    delete options.command;
+    delete options.destroy;
+    delete options.read;
+    delete options.run;
     options = {
       ...{
         encoding: "utf8",
@@ -165,7 +152,7 @@ class File extends Command {
     this.result = data;
     this._end();
   }
-  _command() {
+  _run() {
     const encoding = this.encoding;
     fs.readFile(this.path, { encoding }, this._callback.bind(this));
   }
@@ -180,7 +167,7 @@ class Process extends File {
     super(options);
     return this;
   }
-  _command() {
+  _run() {
     this.process = execFile(
       this.file,
       this.args,
@@ -198,7 +185,7 @@ class Sql extends File {
     super(options);
     return this;
   }
-  _command(args) {
+  _run(args) {
     this.database.pool
       .query(this.sql, args)
       .then((rows) => this._callback(null, rows))
@@ -215,9 +202,9 @@ module.exports = {
 
 debug.enabled = true;
 const command = new Command({
-  command(data) {
+  run(args) {
     this.progress(1, 9);
-    this.data("executed with ", data);
+    this.data("executed with ", args);
     this.end();
   },
   encoding: "utf8",
@@ -225,13 +212,14 @@ const command = new Command({
     this.push("Lorem Ipsum");
     this.push(null);
   },
-})
+});
+command
   .on("data", (data) => console.log(">Data:", data))
   .once("error", (error) => console.log(">Error:", error.message || error))
   .once("end", (status) => console.log(">End", status))
   .on("progress", (progress) => console.log(">Progress:", progress));
 command.pipe(process.stdout);
 command
-  .run()
+  .run("args")
   .then((result) => console.log("Result:", result))
   .catch((error) => console.log("Error:", error));
