@@ -1,7 +1,5 @@
 const debug = require("debug")("commmand");
 const EventEmitter = require("events");
-const { execFile } = require("child_process");
-const fs = require("fs");
 const { PassThrough } = require("stream");
 
 class Command {
@@ -131,85 +129,22 @@ class Command {
   }
 }
 
-class File extends Command {
-  constructor(options) {
-    delete options.destroy;
-    delete options.read;
-    delete options.run;
-    options = {
-      ...{
-        encoding: "utf8",
-        objectMode: false,
-        path: null,
-      },
-      ...options,
-    };
-    super(options);
-    return this;
-  }
-  _callback(error, data) {
-    if (error) return this._error(error);
-    this.result = data;
-    this._end();
-  }
-  _run() {
-    const encoding = this.encoding;
-    fs.readFile(this.path, { encoding }, this._callback.bind(this));
-  }
-}
-
-class Process extends File {
-  constructor(options) {
-    options = {
-      ...{ args: null, file: null, maxBuffer: 256 * 1024 * 1024 },
-      ...options,
-    };
-    super(options);
-    return this;
-  }
-  _run() {
-    this.process = execFile(
-      this.file,
-      this.args,
-      this.options,
-      this._callback.bind(this)
-    );
-  }
-}
-class Sql extends File {
-  constructor(options) {
-    options = {
-      ...{ database: null, sql: null },
-      ...options,
-    };
-    super(options);
-    return this;
-  }
-  _run(args) {
-    this.database.pool
-      .query(this.sql, args)
-      .then((rows) => this._callback(null, rows))
-      .catch((error) => this._callback(error));
-  }
-}
-
-module.exports = {
-  Command,
-  File,
-  Process,
-  Sql,
-};
+module.exports = Command;
 
 debug.enabled = true;
-const command = new Command({
+const command = new Readable({
+  args: ["-summary", "-l"],
+  file: "D:/Veritas/NetBackup/bin/admincmd/bpdbjobs.exe",
+  path: ".env",
   run(args) {
     this.progress(1, 9);
-    this.data("executed with ", args);
+    this.data("Emitter run ", args);
     this.end();
   },
   encoding: "utf8",
   read(size) {
-    this.push("Lorem Ipsum");
+    this.push("Readable stream");
+    this.progress(1, 9);
     this.push(null);
   },
 });

@@ -5,7 +5,7 @@
   "main": "./mars.js",
   "scripts": {
     "build": "rollup --config",
-    "test": "node ./mars.js",
+    "test": "jest --coverage",
     "debug": "node --inspect-brk ./mars.js"
   },
   "author": "Juraj Brabec",
@@ -23,5 +23,7 @@
     "pixl-cli": "^1.0.12",
     "xml-js": "^1.6.11"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "jest": "^26.0.1"
+  }
 }
