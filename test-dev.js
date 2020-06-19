@@ -15,4 +15,4 @@ command
   .run({ name: "%xml" })
   .then((result) => console.log("Result:", result))
   .catch((error) => console.log("Error:", error))
-  .finally(() => pool.end());
+  .finally(() => pool.end().then(() => console.log("End")));

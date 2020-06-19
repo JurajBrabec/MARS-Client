@@ -31,4 +31,8 @@ describe("Emitter class for SQL commands", () => {
         .run("OK")
     ).resolves.toMatch("Tables");
   });
+  test("Pool end", () => {
+    const input = { pool, sql: "show tables;" };
+    new EmitterSql(input).run().then(() => pool.end()).resolves;
+  });
 });
