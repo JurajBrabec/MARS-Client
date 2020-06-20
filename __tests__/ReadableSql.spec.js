@@ -1,34 +1,34 @@
 const ReadableSql = require("../dev/ReadableSql");
-const pool = require("../dev/Database");
+const database = require("../dev/Database");
 
 describe("Readable process class", () => {
   test("Minimal configuration", () => {
-    const input = { pool, sql: "show tables;" };
-    expect(new ReadableSql(input).run()).resolves;
+    const input = { database, sql: "show grants;" };
+    return new ReadableSql(input).run();
   });
   test("Pipe", () => {
-    const input = { pool, sql: "show tables;" };
+    const input = { database, sql: "show grants;" };
     const sql = new ReadableSql(input);
     sql.pipe(process.stdout);
-    expect(sql.run()).resolves;
+    return sql.run();
   });
   test("Event handlers", () => {
+    database.debug();
     const input = {
       debug: true,
-      pool,
-      sql: "show tables;",
+      database,
+      sql: "show grants;",
     };
-    expect(
-      new ReadableSql(input)
-        .on("data", () => {})
-        .once("end", () => {})
-        .once("error", () => {})
-        .on("progress", () => {})
-        .run()
-    ).resolves;
+    return new ReadableSql(input)
+      .on("data", () => {})
+      .once("end", () => {})
+      .once("error", () => {})
+      .on("progress", () => {})
+      .run()
+      .then((result) => expect(result).toBeUndefined());
   });
   test("Pool end", () => {
-    const input = { pool, sql: "show tables;" };
-    new ReadableSql(input).run().then(() => pool.end()).resolves;
+    const input = { database, sql: "show grants;" };
+    return new ReadableSql(input).run().finally(() => database.end());
   });
 });

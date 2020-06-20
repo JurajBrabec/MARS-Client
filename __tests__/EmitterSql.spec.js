@@ -1,26 +1,27 @@
 const EmitterSql = require("../dev/EmitterSql");
-const pool = require("../dev/Database");
+const database = require("../dev/Database");
 
 describe("Emitter class for SQL commands", () => {
   test("Minimal configuration", () => {
-    const input = { pool, sql: "show tables;" };
-    return expect(new EmitterSql(input).run()).resolves.toMatch("Tables");
+    const input = { database, sql: "show grants;" };
+    return expect(new EmitterSql(input).run()).resolves.toMatch("Grants");
   });
   test("Successful run", () => {
-    const input = { pool, sql: "show tables;" };
+    const input = { database, sql: "show grants;" };
     return expect(new EmitterSql(input).run(["%xml"])).resolves.toMatch(
-      "Tables"
+      "Grants"
     );
   });
   test("Unsuccessful run", () => {
-    const input = { pool, sql: "badSql;" };
+    const input = { database, sql: "badSql;" };
     return expect(new EmitterSql(input).run()).rejects.toMatch("1064");
   });
   test("Event handlers", () => {
+    database.debug();
     const input = {
       debug: true,
-      pool,
-      sql: "show tables;",
+      database,
+      sql: "show grants;",
     };
     return expect(
       new EmitterSql(input)
@@ -29,10 +30,10 @@ describe("Emitter class for SQL commands", () => {
         .once("error", () => {})
         .on("progress", () => {})
         .run("OK")
-    ).resolves.toMatch("Tables");
+    ).resolves.toMatch("Grants");
   });
-  test("Pool end", () => {
-    const input = { pool, sql: "show tables;" };
-    new EmitterSql(input).run().then(() => pool.end()).resolves;
+  test("Database end", () => {
+    const input = { database, sql: "show grants;" };
+    new EmitterSql(input).run().then(() => database.end()).resolves;
   });
 });

@@ -3,7 +3,7 @@ const Readable = require("../dev/Readable");
 describe("Readable class with `read` function", () => {
   test("Minimal configuration", () => {
     const input = {};
-    expect(new Readable(input).run()).resolves;
+    return new Readable(input).run();
   });
   test("Successful run", () => {
     const input = {
@@ -12,7 +12,7 @@ describe("Readable class with `read` function", () => {
         this.end();
       },
     };
-    expect(new Readable(input).run()).resolves;
+    return new Readable(input).run();
   });
   test("Raising error", () => {
     const input = {
@@ -20,7 +20,7 @@ describe("Readable class with `read` function", () => {
         this.error("error");
       },
     };
-    expect(new Readable(input).run()).rejects;
+    return expect(new Readable(input).run()).rejects.toMatch("error");
   });
   test("Throwing error", () => {
     const input = {
@@ -28,7 +28,7 @@ describe("Readable class with `read` function", () => {
         this.error(new Error("error"));
       },
     };
-    expect(new Readable(input).run()).rejects;
+    return expect(new Readable(input).run()).rejects.toMatch("error");
   });
   test("Event handlers", () => {
     const input = {
@@ -39,13 +39,11 @@ describe("Readable class with `read` function", () => {
         this.push(null);
       },
     };
-    expect(
-      new Readable(input)
-        .on("data", () => {})
-        .once("end", () => {})
-        .once("error", () => {})
-        .on("progress", () => {})
-        .run()
-    ).resolves;
+    return new Readable(input)
+      .on("data", () => {})
+      .once("end", () => {})
+      .once("error", () => {})
+      .on("progress", () => {})
+      .run();
   });
 });
