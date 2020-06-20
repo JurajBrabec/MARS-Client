@@ -13,7 +13,7 @@ params = {
   socketTimeout: 300000,
   acquireTimeout: 300000,
 };
-debug.enabled = true;
+
 module.exports = mariadb
   .createPool(params)
   .on("acquire", () => debug(`connection acquired`))

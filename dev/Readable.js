@@ -1,9 +1,10 @@
-const debug = require("debug")("readable");
+const debug = require("debug")("Readable");
 const { PassThrough } = require("stream");
 const Emitter = require("./Emitter");
 
 class Readable extends Emitter {
   constructor(options) {
+    if (options.debug) debug.enabled = true;
     const destroy = options.destroy;
     const read = options.read;
     delete options.destroy;
@@ -18,15 +19,15 @@ class Readable extends Emitter {
     this.result = undefined;
     return this;
   }
+
   _destroy(error, callback) {
     debug("_destroy", error);
     if (callback) callback(error);
   }
   _read(size) {
     debug("_read", size);
-    this.push("test");
-    if (1) return this.error(new Error("TEST"));
-    this.push(null);
+    this.push("test"); // this.error("test");
+    this.push(null); // this.end();
   }
   data(...data) {
     super.data(...data);
@@ -77,9 +78,6 @@ class Readable extends Emitter {
         this.error(error);
       }
     });
-  }
-  stream() {
-    return this.run();
   }
 }
 

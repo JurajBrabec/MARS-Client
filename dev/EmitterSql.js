@@ -3,6 +3,7 @@ const EmitterFile = require("./EmitterFile");
 
 class EmitterSql extends EmitterFile {
   constructor(options) {
+    if (options.debug) debug.enabled = true;
     options = {
       ...{ pool: null, sql: null },
       ...options,

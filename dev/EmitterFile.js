@@ -4,6 +4,7 @@ const Emitter = require("./Emitter");
 
 class EmitterFile extends Emitter {
   constructor(options) {
+    if (options.debug) debug.enabled = true;
     delete options.run;
     options = {
       ...{

@@ -4,6 +4,7 @@ const EmitterFile = require("./EmitterFile");
 
 class EmitterProcess extends EmitterFile {
   constructor(options) {
+    if (options.debug) debug.enabled = true;
     options = {
       ...{ args: null, file: null, maxBuffer: 256 * 1024 * 1024 },
       ...options,

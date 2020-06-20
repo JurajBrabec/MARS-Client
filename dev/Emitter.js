@@ -18,8 +18,7 @@ class Emitter {
   }
   _run(...args) {
     debug("_run", args);
-    this.data("test");
-    //this.error("test");
+    this.data("test"); //this.error("test");
     this.end();
   }
   data(...data) {

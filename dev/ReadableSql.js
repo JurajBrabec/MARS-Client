@@ -1,43 +1,44 @@
-const debug = require("debug")("readableSql");
+const debug = require("debug")("ReadableSql");
 const ReadableFile = require("./ReadableFile");
 
 class ReadableSql extends ReadableFile {
   constructor(options) {
+    if (options.debug) debug.enabled = true;
     options = {
-      ...{ database: null, sql: null },
+      ...{ pool: null, sql: null },
       ...options,
     };
     super(options);
-    this.database.pool
-      .on("acquire", (conn) => debug("acquired", conn.threadId))
-      .on("connection", (conn) => debug("connection", conn.threadId))
-      .on("enqueue", () => debug("enqueued"))
-      .on("error", (error) => debug("error", error))
-      .on("release", (conn) => debug("released", conn));
     return this;
   }
 
-  async _read(args) {
-    let connection;
-    try {
-      connection = await this.database.pool
-        .getConnection()
-        .on("error", (error) => debug("error", error));
-      const query = await connection
-        .queryStream(this.sql, args)
-        .on("fields", (fields) => debug("fields", fields))
-        .on("data", (row) => debug("row", row))
-        .once("end", () => debug("ending"))
-        .once("error", (error) => debug("error", error))
-        .on("data", (row) => this.push(row))
-        .once("end", () => this.end())
-        .once("error", (error) => this.error(error));
-    } catch (error) {
-      this.error(error);
-    } finally {
-      connection.release();
-    }
+  _read(args) {
+    if (this._source) return;
+    debug("_read", args);
+    this.pool
+      .getConnection()
+      .then((connection) => {
+        debug("connection", connection.threadId);
+        connection.on("error", (error) => debug("error", error));
+        this._source = connection;
+        return connection.queryStream(this.sql, args);
+      })
+      .then((query) => {
+        debug("query");
+        query
+          //          .on("data", (row) => debug("row", row))
+          .once("end", () => debug("ending"))
+          .once("error", (error) => debug("error", error))
+          .on("fields", (fields) => debug("fields", fields))
+          .on("data", (row) => this.push(JSON.stringify(row)))
+          .once("end", () => this.end())
+          .once("error", (error) => this.error(error))
+          .on("fields", (fields) =>
+            this.emit("fields", JSON.stringify(fields))
+          );
+      })
+      .catch((error) => this.error(error))
+      .finally(() => this._source.release());
   }
 }
-
 module.exports = ReadableSql;
