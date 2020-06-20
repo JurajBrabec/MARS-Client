@@ -5,7 +5,7 @@ class EmitterSql extends EmitterFile {
   constructor(options) {
     if (options.debug) debug.enabled = true;
     options = {
-      ...{ pool: null, sql: null },
+      ...{ database: null, sql: null },
       ...options,
     };
     super(options);
@@ -13,8 +13,8 @@ class EmitterSql extends EmitterFile {
   }
   _run(...args) {
     debug("_run", args);
-    this.pool
-      .query(this.sql, ...args)
+    this.database
+      .query(this.sql, args)
       .then((rows) => this._callback(null, JSON.stringify(rows)))
       .catch((error) => this._callback(error));
   }

@@ -5,7 +5,7 @@ class ReadableSql extends ReadableFile {
   constructor(options) {
     if (options.debug) debug.enabled = true;
     options = {
-      ...{ pool: null, sql: null },
+      ...{ database: null, sql: null },
       ...options,
     };
     super(options);
@@ -15,14 +15,9 @@ class ReadableSql extends ReadableFile {
   _read(args) {
     if (this._source) return;
     debug("_read", args);
-    this.pool
-      .getConnection()
-      .then((connection) => {
-        debug("connection", connection.threadId);
-        connection.on("error", (error) => debug("error", error));
-        this._source = connection;
-        return connection.queryStream(this.sql, args);
-      })
+    this._source = this.database;
+    this.database
+      .queryStream(this.sql, args)
       .then((query) => {
         debug("query");
         query
@@ -38,7 +33,7 @@ class ReadableSql extends ReadableFile {
           );
       })
       .catch((error) => this.error(error))
-      .finally(() => this._source.release());
+      .finally(() => this.database.release());
   }
 }
 module.exports = ReadableSql;
