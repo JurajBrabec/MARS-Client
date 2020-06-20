@@ -43,7 +43,7 @@ class Readable extends Emitter {
     super.end();
   }
   error(error) {
-    if (!this._stream.readableEnded) return this.destroy(error);
+    if (!this._stream.readableEnded) this.destroy(error);
     super.error(error);
   }
   pipe(destination, options) {
