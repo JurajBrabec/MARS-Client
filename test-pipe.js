@@ -36,6 +36,3 @@ command
   .then((result) => console.log("Result:", result))
   .catch((error) => console.log("Error:", error));
 //  .finally(() => database.end());
-
-function onData(data) {}
-function onEnd(status) {}
