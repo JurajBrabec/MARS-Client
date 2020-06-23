@@ -139,7 +139,7 @@ function buffer(text) {
   const r = action1.split || action1.separate;
   if (!r.test(_buffer)) return;
   const newBuffer = _buffer.split(r).pop();
-  text = _buffer.slice(0, -newBuffer.length);
+  text = newBuffer.length ? _buffer.slice(0, -newBuffer.length) : _buffer;
   _buffer = newBuffer;
   return JSON.stringify(_actions.reduce(_action, text));
 }
@@ -153,6 +153,7 @@ function delimited(delimited) {
 }
 function end() {
   debug("end");
+  if (!_buffer.length) return;
   return JSON.stringify(_actions.reduce(_action, _buffer));
 }
 function escaped(escaped) {
