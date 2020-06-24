@@ -1,10 +1,10 @@
 const dotenv = require("dotenv").config();
+const path = require("path");
 const ReadableProcess = require("./dev/ReadableProcess");
 const TransformParser = require("./dev/TransformParser");
-const path = require("path");
 
 const command = new ReadableProcess({
-  debug: true,
+  debug: false,
   args: ["-summary", "-l"],
   file: path.join(process.env.NBU_BIN, "admincmd", "bpdbjobs.exe"),
 });
