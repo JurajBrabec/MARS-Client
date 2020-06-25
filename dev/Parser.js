@@ -1,3 +1,5 @@
+const { action } = require("commander");
+
 const debug = require("debug")("Parser");
 
 delimiter = "\n";
@@ -20,7 +22,7 @@ function _iterate(item, func = {}) {
   } else {
     result = item
       .map((item) => _iterate(item, func))
-      .filter((row) => row.length);
+      .filter((row) => row && row.length);
   }
   return result;
 }
@@ -143,6 +145,77 @@ function buffer(text) {
   _buffer = newBuffer;
   return JSON.stringify(_actions.reduce(_action, text));
 }
+function create(actions) {
+  debug("create", actions);
+  actions.map((action) =>
+    Object.entries(action).map((item) => {
+      const [key, value] = item;
+      switch (key) {
+        case "debug":
+          debugEnabled(value);
+          break;
+        case "delimited":
+          delimited(value);
+          break;
+        case "escaped":
+          escaped(value);
+          break;
+        case "expect":
+          expect(value);
+          break;
+        case "filter":
+          filter(value);
+          break;
+        case "lcase":
+          lcase();
+          break;
+        case "pop":
+          pop(value);
+          break;
+        case "quoted":
+          quoted(value);
+          break;
+        case "quote":
+          quote(value);
+          break;
+        case "reject":
+          reject(value);
+          break;
+        case "replace":
+          replace(...value);
+          break;
+        case "shift":
+          shift();
+          break;
+        case "separate":
+          separate(value);
+          break;
+        case "separated":
+          separated(value);
+          break;
+        case "split":
+          split(value);
+          break;
+        case "ucase":
+          ucase();
+          break;
+        case "unpivot":
+          unpivot();
+          break;
+        case "unquote":
+          unquote(value);
+          break;
+        case "trim":
+          trim(value);
+          break;
+        default:
+          _error(`Unknown action ${key}`);
+          break;
+      }
+    })
+  );
+  return this;
+}
 function debugEnabled(enabled = true) {
   debug.enabled = enabled;
   return this;
@@ -201,7 +274,7 @@ function shift() {
   return this;
 }
 function separate(separated = separator) {
-  _addAction({ separate: separated, trim: null, filter: "" });
+  _addAction({ separate: separated, filter: null, trim: null });
   return this;
 }
 function separated(separated) {
@@ -209,7 +282,7 @@ function separated(separated) {
   return this;
 }
 function split(delimited = delimiter) {
-  _addAction({ split: delimited, trim: null, filter: "" });
+  _addAction({ split: delimited, filter: null, trim: null });
   return this;
 }
 function ucase() {
@@ -232,6 +305,7 @@ function trim(trimmed) {
 
 module.exports = {
   buffer,
+  create,
   debug: debugEnabled,
   delimited,
   end,
