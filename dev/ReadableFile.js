@@ -3,7 +3,7 @@ const fs = require("fs");
 const Readable = require("./Readable");
 
 class ReadableFile extends Readable {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     delete options.destroy;
     delete options.read;

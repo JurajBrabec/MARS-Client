@@ -4,7 +4,7 @@ const { StringDecoder } = require("string_decoder");
 const parser = require("./Parser");
 
 class TransformParser extends Transform {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     options = {
       ...{
@@ -50,6 +50,10 @@ class TransformParser extends Transform {
     } catch (error) {
       callback(error);
     }
+  }
+  debug(enabled) {
+    debug.enabled = enabled;
+    return this;
   }
 }
 

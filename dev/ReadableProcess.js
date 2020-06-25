@@ -1,12 +1,12 @@
 const debug = require("debug")("ReadableProcess");
-const { execFile } = require("child_process");
+const { spawn } = require("child_process");
 const ReadableFile = require("./ReadableFile");
 
 class ReadableProcess extends ReadableFile {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     options = {
-      ...{ args: null, file: null, maxBuffer: 256 * 1024 * 1024 },
+      ...{ args: null, file: null, maxBuffer: Infinity },
       ...options,
     };
     super(options);
@@ -19,7 +19,7 @@ class ReadableProcess extends ReadableFile {
       encoding: this.encoding,
       maxBuffer: this.maxBuffer,
     };
-    this._source = execFile(this.file, this.args, options)
+    this._source = spawn(this.file, this.args, options)
       .once("close", (code, signal) => debug("close", signal || code))
       .once("disconnect", () => debug("disconnect"))
       .once("error", (error) => debug("error", error))
@@ -29,7 +29,7 @@ class ReadableProcess extends ReadableFile {
       .once("error", (error) => this.error(error));
     this._source.stderr.pipe(this._source.stdout);
     this._source.stdout.on("data", (chunk) => this.push(chunk));
-    this._source.stdout.pipe(this._stream);
+    //this._source.stdout.pipe(this._stream);
   }
 }
 

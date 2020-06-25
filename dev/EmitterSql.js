@@ -2,7 +2,7 @@ const debug = require("debug")("emitterSql");
 const EmitterFile = require("./EmitterFile");
 
 class EmitterSql extends EmitterFile {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     options = {
       ...{ database: null, sql: null },

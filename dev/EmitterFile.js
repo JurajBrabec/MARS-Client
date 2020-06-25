@@ -3,7 +3,7 @@ const fs = require("fs");
 const Emitter = require("./Emitter");
 
 class EmitterFile extends Emitter {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     delete options.run;
     options = {

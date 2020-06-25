@@ -2,7 +2,7 @@ const debug = require("debug")("ReadableSql");
 const ReadableFile = require("./ReadableFile");
 
 class ReadableSql extends ReadableFile {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     options = {
       ...{ database: null, sql: null },

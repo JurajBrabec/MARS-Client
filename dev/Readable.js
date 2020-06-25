@@ -3,7 +3,7 @@ const { PassThrough } = require("stream");
 const Emitter = require("./Emitter");
 
 class Readable extends Emitter {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     const destroy = options.destroy;
     const read = options.read;

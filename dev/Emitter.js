@@ -2,7 +2,7 @@ const debug = require("debug")("Emitter");
 const EventEmitter = require("events");
 
 class Emitter {
-  constructor(options) {
+  constructor(options = {}) {
     if (options.debug) debug.enabled = true;
     debug("constructor", options);
     options = {
@@ -26,6 +26,10 @@ class Emitter {
     debug("data", data);
     this.emit("data", data);
     this.result += data;
+  }
+  debug(enabled) {
+    debug.enabled = enabled;
+    return this;
   }
   end() {
     if (this.status !== undefined) return this;
