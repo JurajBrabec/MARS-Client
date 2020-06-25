@@ -1,37 +1,30 @@
-const dotenv = require("dotenv").config();
-const path = require("path");
 const EmitterProcess = require("./dev/EmitterProcess");
 const parser = require("./dev/Parser");
+const tables = require("./lib/Tables");
+const { summary, jobs } = require("./dev/nbu/bpdbjobs");
 
-const command = new EmitterProcess({
-  debug: true,
-  args: ["-summary", "-l"],
-  file: path.join(process.env.NBU_BIN, "admincmd", "bpdbjobs.exe"),
-});
-parser
-  .debug(command.debug)
-  .split(/(\r?\n){2}/)
-  .filter()
-  .expect(/^Summary/)
-  .split(/\r?\n/)
-  .replace("on", ":")
-  .separate(":")
-  .shift()
-  .expect(10);
-command
+const command = summary;
+const debug = false;
+const process = new EmitterProcess(command.process).debug(debug);
+parser.create(command.parser).debug(debug);
+tables.create(command.tables).asObject();
+
+process
   .on("data", onData)
   .once("error", (error) => console.log(">Error:", error.message || error))
   .once("end", (status) => console.log(">End", status))
   .on("progress", (progress) => console.log(">Progress:", progress));
-command
+process
   .run()
-  .then((result) => console.log("Result:", parser.parse(result)))
+  .then((result) =>
+    console.log("Result:", tables.assign(JSON.parse(parser.parse(result))))
+  )
   .catch((error) => console.log("Error:", error));
 //  .finally(() => database.end());
 
 function onData(data) {
   try {
-    data = parser.parse(data);
+    data = tables.assign(JSON.parse(parser.parse(data)));
     if (data) console.log(">Data:", data);
   } catch (error) {
     console.log("Parsing error:", error);

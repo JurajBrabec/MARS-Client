@@ -1,30 +1,20 @@
-const dotenv = require("dotenv").config();
-const path = require("path");
 const ReadableProcess = require("./dev/ReadableProcess");
 const parser = require("./dev/Parser");
+const tables = require("./lib/Tables");
+const { summary, jobs } = require("./dev/nbu/bpdbjobs");
 
-const command = new ReadableProcess({
-  debug: false,
-  args: ["-summary", "-l"],
-  file: path.join(process.env.NBU_BIN, "admincmd", "bpdbjobs.exe"),
-});
-parser
-  .debug(command.debug)
-  .split(/(\r?\n){2}/)
-  .filter()
-  .expect(/^Summary/)
-  .split(/\r?\n/)
-  .replace("on", ":")
-  .separate(":")
-  .shift()
-  .expect(10);
+const command = jobs;
+const debug = false;
+const process = new ReadableProcess(command.process).debug(debug);
+parser.create(command.parser).debug(debug);
+tables.create(command.tables).asBatch(2048);
 
-command
+process
   .on("data", onData)
   .once("error", (error) => console.log(">Error:", error.message || error))
-  .once("end", (status) => onEnd)
+  .once("end", onEnd)
   .on("progress", (progress) => console.log(">Progress:", progress));
-command
+process
   .run()
   .then((result) => console.log("Result:", result))
   .catch((error) => console.log("Error:", error));
@@ -33,13 +23,25 @@ command
 function onData(data) {
   try {
     data = parser.buffer(data);
-    if (data) console.log(">Data:", data);
+    if (data) {
+      data = tables.assign(JSON.parse(data));
+      if (data) console.log(">Data:", data.bpdbjobs_report[0].rows.length);
+    }
   } catch (error) {
     console.log("Parsing error:", error);
   }
 }
 function onEnd(status) {
-  const data = parser.end();
-  if (data) console.log(">Data:", data);
+  try {
+    data = parser.end();
+    if (data) {
+      data = tables.assign(JSON.parse(data));
+      if (data) console.log(">ParserEnd:", data.bpdbjobs_report[0].rows.length);
+    }
+    data = tables.end();
+    if (data) console.log(">TablesEnd:", data.bpdbjobs_report.rows.length);
+  } catch (error) {
+    console.log("Parsing error:", error);
+  }
   console.log(">End", status);
 }
