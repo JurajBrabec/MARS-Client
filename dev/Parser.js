@@ -77,7 +77,8 @@ function _action(result, action, index) {
             : text;
         break;
       case "replace":
-        func.text = (text) => text.replace(...param);
+        func.text = (text) =>
+          text === param[0] ? param[1] : text.replace(...param);
         break;
       case "separate":
         e = escapeChar;
@@ -119,7 +120,7 @@ function _action(result, action, index) {
       default:
         break;
     }
-    result = _iterate(result, func);
+    result = _flatten(_iterate(result, func));
     debug(result);
     return result;
   }, result);
@@ -127,6 +128,17 @@ function _action(result, action, index) {
 function _addAction(action) {
   debug("addAction", _actions.length, action);
   _actions.push(action);
+}
+function _flatten(items) {
+  if (
+    !Array.isArray(items) ||
+    !Array.isArray(items[0]) ||
+    !Array.isArray(items[0][0])
+  )
+    return items;
+  const flattened = [];
+  items.map((item) => item.map((subItem) => flattened.push(subItem)));
+  return flattened;
 }
 _hasText = (v) => _isText(v[0]);
 _isText = (v) => !Array.isArray(v);
