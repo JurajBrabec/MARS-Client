@@ -1,4 +1,5 @@
 const { action } = require("commander");
+const { clear } = require("../lib/Tables/Table");
 
 const debug = require("debug")("Parser");
 
@@ -145,8 +146,13 @@ function buffer(text) {
   _buffer = newBuffer;
   return JSON.stringify(_actions.reduce(_action, text));
 }
+function clear() {
+  _actions = [];
+  return this;
+}
 function create(actions) {
   debug("create", actions);
+  clear();
   actions.map((action) =>
     Object.entries(action).map((item) => {
       const [key, value] = item;
@@ -305,6 +311,7 @@ function trim(trimmed) {
 
 module.exports = {
   buffer,
+  clear,
   create,
   debug: debugEnabled,
   delimited,
