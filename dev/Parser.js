@@ -1,5 +1,4 @@
 const { action } = require("commander");
-const { clear } = require("../lib/Tables/Table");
 
 const debug = require("debug")("Parser");
 
