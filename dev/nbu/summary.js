@@ -1,8 +1,9 @@
-const bpdbjobs = require("./bpdbjobs");
+const { Nbu } = require("./nbu");
 
-bpdbjobs
+const nbu = new Nbu();
+nbu
   .summary()
-  .asBatch()
+  //  .asBatch()
   //  .on("data", (data) => console.log(data))
   .run()
   .then((objects) => console.log(objects))

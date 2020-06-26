@@ -1,4 +1,4 @@
-const debug = require("debug")("NbuEmitter");
+const debug = require("debug")("Stream");
 const parser = require("../Parser");
 const ReadableProcess = require("../ReadableProcess");
 const tables = require("../../lib/Tables");
@@ -11,7 +11,7 @@ class Stream extends ReadableProcess {
     const command = options.command;
     options = {
       ...{
-        batchSize: 2048,
+        batchSize: options.batchSize || 2048,
         debug: options.debug,
         tables: tables.create(command.tables),
         transform: new TransformParser(),

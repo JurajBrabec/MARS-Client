@@ -1,4 +1,4 @@
-const debug = require("debug")("NbuEmitter");
+const debug = require("debug")("Emitter");
 const EmitterProcess = require("../EmitterProcess");
 const parser = require("../Parser");
 const tables = require("../../lib/Tables");
