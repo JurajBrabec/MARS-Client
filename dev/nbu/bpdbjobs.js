@@ -1,7 +1,8 @@
 const dotenv = require("dotenv").config();
 const path = require("path");
+const nbu = require("./nbu");
 
-const summary = {
+const _summary = {
   process: {
     args: ["-summary", "-l"],
     file: path.join(process.env.NBU_BIN, "admincmd", "bpdbjobs.exe"),
@@ -32,7 +33,7 @@ const summary = {
   },
 };
 
-const jobs = {
+const _jobs = {
   process: {
     args: ["-report", "-most_columns"],
     file: path.join(process.env.NBU_BIN, "admincmd", "bpdbjobs.exe"),
@@ -112,4 +113,18 @@ const jobs = {
   },
 };
 
-module.exports = { summary, jobs };
+jobsAll = () => new nbu.Stream({ command: _jobs });
+
+function jobsDaysBack(daysBack) {
+  const command = { ..._jobs };
+  command.process.args.push("-t", nbu.dateDiff(-daysBack));
+  return new nbu.Stream({ command });
+}
+function jobsBackupId(backupId) {
+  const command = { ..._jobs };
+  command.process.args.push("-jobid", backupId);
+  return new nbu.Stream({ command });
+}
+summary = () => new nbu.Emitter({ command: _summary });
+
+module.exports = { jobsAll, jobsBackupId, jobsDaysBack, summary };
