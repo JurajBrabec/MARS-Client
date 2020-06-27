@@ -68,4 +68,18 @@ class Files {
   }
 }
 
-module.exports = { Files };
+class FilesAll extends Files {}
+class FilesBackupId extends Files {
+  constructor(nbu, backupId) {
+    super(nbu);
+    this.process.args.push("-backupid", backupId);
+  }
+}
+class FilesClient extends Files {
+  constructor(nbu, client) {
+    super(nbu);
+    this.process.args.push("-client", client);
+  }
+}
+
+module.exports = { Files, FilesAll, FilesBackupId, FilesClient };

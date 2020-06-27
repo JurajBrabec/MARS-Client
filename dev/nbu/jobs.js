@@ -4,7 +4,7 @@ const nbu = new Nbu();
 nbu
   .jobs()
   //  .jobs({all:true})
-  //  .jobs({daySack:1})
+  //  .jobs({daysBack:1})
   .on("data", (data) => console.log(data))
   .run()
   .then(() => console.log("Done"))

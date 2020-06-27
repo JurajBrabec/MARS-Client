@@ -64,4 +64,18 @@ class Images {
   }
 }
 
-module.exports = { Images };
+class ImagesAll extends Images {}
+class ImagesClient extends Images {
+  constructor(nbu, client) {
+    super(nbu);
+    this.process.args.push("-client", client);
+  }
+}
+class ImagesDaysBack extends Images {
+  constructor(nbu, days) {
+    super(nbu);
+    this.process.args.push("-d", nbu.datteDiff(days));
+  }
+}
+
+module.exports = { Images, ImagesAll, ImagesClient, ImagesDaysBack };

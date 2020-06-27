@@ -6,11 +6,18 @@ const bpflist = require("./bpflist");
 const bpimmedia = require("./bpimmedia");
 const bpplclients = require("./bpplclients.js");
 class Nbu {
-  constructor() {
-    this.bin = process.env.NBU_BIN;
-    this.data = process.env.NBU_DATA;
-    this.startTime = new Date();
+  constructor(params) {
+    params = {
+      ...{
+        bin: process.env.NBU_BIN,
+        data: process.env.NBU_DATA,
+        startTime: new Date(),
+      },
+      ...params,
+    };
+    Object.assign(this, params);
     this._masterServer = null;
+    return this;
   }
   dateTime(value) {
     const options = {
@@ -50,20 +57,28 @@ class Nbu {
   }
   async files(options = {}) {
     await this.init();
-    options.command = new bpflist.Files(this);
+    if (options.all) options.command = new bpflist.FilesAll(this);
+    if (options.backupId)
+      options.command = new bpflist.FilesBackupId(this, options.backupId);
+    if (options.client)
+      options.command = new bpflist.FilesClient(this, options.client);
     return new Stream(options);
   }
-  async images(options = {}) {
+  async images(options = { daysBack: 3 }) {
     await this.init();
-    options.command = new bpimmedia.Images(this);
+    if (options.all) options.command = new bpimmedia.ImagesAll(this);
+    if (options.client)
+      options.command = new bpimmedia.ImagesClient(this, options.client);
+    if (options.days)
+      options.command = new bpimmedia.ImagesDaysBack(this, options.days);
     return new Stream(options);
   }
   jobs(options = { daysBack: 3 }) {
+    if (options.all) options.command = new bpdbjobs.JobsAll(this);
     if (options.daysBack)
       options.command = new bpdbjobs.JobsDaysBack(this, options.daysBack);
     if (options.jobId)
       options.command = new bpdbjobs.JobId(this, options.jobId);
-    if (options.all) options.command = new bpdbjobs.JobsAll(this);
     return new Stream(options);
   }
   summary(options = {}) {
