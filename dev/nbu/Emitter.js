@@ -31,7 +31,6 @@ class Emitter extends EmitterProcess {
     }
   }
   data(...data) {
-    debug("data", data);
     data = data.join("");
     debug("data", data);
     try {
