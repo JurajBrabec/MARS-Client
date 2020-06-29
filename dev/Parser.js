@@ -1,5 +1,3 @@
-const { action } = require("commander");
-
 const debug = require("debug")("Parser");
 
 delimiter = "\n";
@@ -51,6 +49,9 @@ function _action(result, action, index) {
               : _error(`Expected text "${param}" got "${text}"`);
         }
         break;
+      case "external":
+        func.text = param;
+        break;
       case "filter":
         func.row = (row) => row.filter((text) => !_match(param, text));
         break;
@@ -59,7 +60,8 @@ function _action(result, action, index) {
         break;
       case "pop":
         func.row = (row) => {
-          row.pop();
+          //          row.pop();
+          row.splice(-param, param);
           return row.length === 1 ? row[0] : row;
         };
         break;
@@ -90,7 +92,8 @@ function _action(result, action, index) {
         break;
       case "shift":
         func.row = (row) => {
-          row.shift();
+          //          row.shift();
+          row.splice(0, param);
           return row.length === 1 ? row[0] : row;
         };
         break;
@@ -180,6 +183,9 @@ function create(actions) {
         case "expect":
           expect(value);
           break;
+        case "external":
+          external(value);
+          break;
         case "filter":
           filter(value);
           break;
@@ -202,7 +208,7 @@ function create(actions) {
           replace(...value);
           break;
         case "shift":
-          shift();
+          shift(value);
           break;
         case "separate":
           separate(value);
@@ -237,7 +243,7 @@ function debugEnabled(enabled = true) {
   debug.enabled = enabled;
   return this;
 }
-function delimited(delimited) {
+function delimited(delimited = delimiter) {
   delimiter = delimited;
   return this;
 }
@@ -246,12 +252,16 @@ function end() {
   if (!_buffer.length) return;
   return JSON.stringify(_actions.reduce(_action, _buffer));
 }
-function escaped(escaped) {
+function escaped(escaped = escapeChar) {
   escapeChar = escaped;
   return this;
 }
 function expect(expected) {
   _addAction({ expect: expected });
+  return this;
+}
+function external(func) {
+  _addAction({ external: func });
   return this;
 }
 function filter(filtered = "") {
@@ -266,11 +276,11 @@ function parse(text) {
   debug("parse", text);
   return JSON.stringify(_actions.reduce(_action, text));
 }
-function pop() {
-  _addAction({ pop: null });
+function pop(rows = 1) {
+  _addAction({ pop: rows });
   return this;
 }
-function quoted(quoted) {
+function quoted(quoted = quoteChar) {
   quoteChar = quoted;
   return this;
 }
@@ -286,15 +296,15 @@ function replace(found, replaced = "") {
   _addAction({ replace: [found, replaced] });
   return this;
 }
-function shift() {
-  _addAction({ shift: null });
+function shift(rows = 1) {
+  _addAction({ shift: rows });
   return this;
 }
 function separate(separated = separator) {
   _addAction({ separate: separated, filter: null, trim: null });
   return this;
 }
-function separated(separated) {
+function separated(separated = separator) {
   separator = separated;
   return this;
 }
@@ -329,6 +339,7 @@ module.exports = {
   end,
   escaped,
   expect,
+  external,
   filter,
   lcase,
   parse,
