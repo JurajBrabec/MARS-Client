@@ -1,10 +1,15 @@
 const dotenv = require("dotenv").config();
 const Emitter = require("./Emitter");
+const File = require("./File");
 const Stream = require("./Stream");
 const bpdbjobs = require("./bpdbjobs");
 const bpflist = require("./bpflist");
 const bpimmedia = require("./bpimmedia");
 const bpplclients = require("./bpplclients.js");
+const bpretlevel = require("./bpretlevel");
+const nbdevquery = require("./nbdevquery");
+const nbstl = require("./nbstl");
+const vaultxml = require("./vaultxml");
 class Nbu {
   constructor(params) {
     params = {
@@ -57,7 +62,7 @@ class Nbu {
   }
   async files(options = {}) {
     await this.init();
-    if (options.all) options.command = new bpflist.FilesAll(this);
+    if (options.all) options.command = new bpflist.FilesAll(this); //TODO: all clients iteration
     if (options.backupId)
       options.command = new bpflist.FilesBackupId(this, options.backupId);
     if (options.client)
@@ -66,7 +71,7 @@ class Nbu {
   }
   async images(options = { daysBack: 3 }) {
     await this.init();
-    if (options.all) options.command = new bpimmedia.ImagesAll(this);
+    if (options.all) options.command = new bpimmedia.ImagesAll(this); //TODO: all clients iteration
     if (options.client)
       options.command = new bpimmedia.ImagesClient(this, options.client);
     if (options.days)
@@ -80,6 +85,26 @@ class Nbu {
     if (options.jobId)
       options.command = new bpdbjobs.JobId(this, options.jobId);
     return new Stream(options);
+  }
+  async pureDisks(options = {}) {
+    await this.init();
+    options.command = new nbdevquery.PureDisks(this);
+    return new Emitter(options);
+  }
+  async retlevels(options = {}) {
+    await this.init();
+    options.command = new bpretlevel.Retlevels(this);
+    return new Emitter(options);
+  }
+  async slps(options = {}) {
+    await this.init();
+    options.command = new nbstl.SLPs(this);
+    return new Emitter(options);
+  }
+  async vaults(options = {}) {
+    await this.init();
+    options.command = new vaultxml.Vaults(this);
+    return new File(options);
   }
   summary(options = {}) {
     options.command = new bpdbjobs.Summary(this);
