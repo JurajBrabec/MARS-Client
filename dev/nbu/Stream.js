@@ -1,5 +1,4 @@
 const debug = require("debug")("Stream");
-const parser = require("../Parser");
 const ReadableProcess = require("../ReadableProcess");
 const tables = require("../../lib/Tables");
 const TransformParser = require("../TransformParser");
@@ -13,20 +12,19 @@ class Stream extends ReadableProcess {
       ...{
         batchSize: options.batchSize || 2048,
         debug: options.debug,
+        parser: command.parser,
         tables: tables.create(command.tables),
-        transform: new TransformParser(),
       },
       ...command.process,
     };
     super(options);
     this.result = {};
     this.tables.asBatch(this.batchSize);
-    this.transform
+    this.transform = new TransformParser(options)
       .on("data", this.dataTransform.bind(this))
       .once("error", (error) => this.error(error))
       .once("finish", this.finish.bind(this))
       .debug(options.debug);
-    this.transform.parser.create(command.parser).debug(options.debug);
     this.pipe(this.transform);
   }
   _data(data) {
@@ -40,7 +38,7 @@ class Stream extends ReadableProcess {
   dataTransform(data) {
     debug("data", data);
     try {
-      this._data(this.tables.assign(JSON.parse(data)));
+      this._data(this.tables.fromParser(data));
     } catch (error) {
       this.error(`Parsing error: ${error}`);
     }

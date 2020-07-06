@@ -1,7 +1,7 @@
 const debug = require("debug")("Transform");
 const { Transform } = require("stream");
 const { StringDecoder } = require("string_decoder");
-const parser = require("./Parser");
+const { Parser } = require("./TextParser");
 
 class TransformParser extends Transform {
   constructor(options = {}) {
@@ -11,22 +11,18 @@ class TransformParser extends Transform {
         defaultEncoding: "utf8",
         encoding: "utf8",
         highWaterMark: 64 * 1024,
-        parser,
         path: null,
       },
       ...options,
       ...{ objectMode: false },
     };
     super(options);
+    this._parser = new Parser(options.parser).debug(options.debug);
     this._decoder = new StringDecoder(options.defaultEncoding);
-    this._parser = options.parser;
     this.on("data", (chunk) => debug(">data", chunk))
       .once("error", (error) => debug(">error", error.message || error))
       .once("end", () => debug(">end"))
       .once("finish", () => debug(">finish"));
-  }
-  get parser() {
-    return this._parser;
   }
   _transform(chunk, encoding, callback) {
     if (encoding === "buffer") {
@@ -34,7 +30,7 @@ class TransformParser extends Transform {
     }
     debug("chunk", chunk);
     try {
-      const result = this._parser.buffer(chunk);
+      const result = this._parser.bufferText(chunk);
       if (result) this.push(result);
       callback();
     } catch (error) {

@@ -1,6 +1,6 @@
 const debug = require("debug")("Emitter");
 const EmitterProcess = require("../EmitterProcess");
-const parser = require("../Parser");
+const { Parser } = require("../TextParser");
 const tables = require("../../lib/Tables");
 
 class Emitter extends EmitterProcess {
@@ -10,7 +10,7 @@ class Emitter extends EmitterProcess {
     options = {
       ...{
         debug: options.debug,
-        parser: parser.create(options.command.parser).debug(options.debug),
+        parser: new Parser(options.command.parser).debug(options.debug),
         tables: tables.create(options.command.tables),
       },
       ...options.command.process,
@@ -34,7 +34,7 @@ class Emitter extends EmitterProcess {
     data = data.join("");
     debug("data", data);
     try {
-      this._data(this.tables.assign(JSON.parse(this.parser.parse(data))));
+      this._data(this.tables.fromParser(this.parser.parseText(data)));
     } catch (error) {
       this.error(`Parsing error: ${error}`);
     }
