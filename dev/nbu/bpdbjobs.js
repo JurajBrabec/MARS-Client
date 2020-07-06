@@ -1,4 +1,6 @@
 const path = require("path");
+const { Actions } = require("../TextParser");
+const { Column, Row } = Actions;
 
 class Summary {
   constructor(nbu) {
@@ -7,14 +9,12 @@ class Summary {
       file: path.join(nbu.bin, "admincmd", "bpdbjobs.exe"),
     };
     this.parser = [
-      { split: /(\r?\n){2}/ },
-      { filter: "" },
-      { expect: /^Summary/ },
-      { split: /\r?\n/ },
-      { replace: ["on", ":"] },
-      { separate: ":" },
-      { shift: 1 },
-      { expect: 10 },
+      Column.expect(/^Summary/),
+      Column.split(/\r?\n/),
+      Column.replace(/^.+(:|on)/m),
+      Column.trim(),
+      Column.filter(""),
+      Row.expect(10),
     ];
     this.tables = {
       bpdbjobs_summary: [
@@ -40,10 +40,11 @@ class Jobs {
       file: path.join(nbu.bin, "admincmd", "bpdbjobs.exe"),
     };
     this.parser = [
-      { expect: /^\d+/ },
-      { split: /\r?\n/m },
-      { separate: "," },
-      { expect: 64 },
+      Column.expect(/^\d+,/),
+      Row.split(/\r?\n/),
+      Column.filter(""),
+      Column.separate(","),
+      Row.expect(64),
     ];
     this.tables = {
       bpdbjobs_report: [
