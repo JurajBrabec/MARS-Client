@@ -74,10 +74,17 @@ class Reject extends Action {
 class Replace extends Action {
   config = () => {
     const [what, withText = ""] = asArray(this.params);
-    this.regExp = what instanceof RegExp ? what : new RegExp(`^${what}$`, "gm");
+    this.regExp =
+      what instanceof RegExp
+        ? what
+        : new RegExp(`^${what.replace(/(?=\W)/g, "\\")}$`, "gm");
     this.withText = withText;
   };
-  column = (text) => text.replace(this.regExp, this.withText);
+  column = (text) => {
+    let result = text.replace(this.regExp, this.withText);
+    if (result === "null") result = null;
+    return result;
+  };
 }
 class Separate extends Action {
   config = () => {
@@ -127,7 +134,7 @@ class ExpectColumns extends Action {
     array.length === this.params
       ? array
       : this.parser.error(
-          `Expected ${this.params} columns got ${array.length}`
+          `Expected ${this.params} columns got ${array.length} (${array})`
         );
 }
 class Filter extends Action {
@@ -198,6 +205,11 @@ class UnPivotRow extends Action {
     return array.map((row) => [...rows, ...row]);
   };
 }
+
+class External extends Action {
+  config = () => (this.external = this.params);
+}
+
 const Actions = {
   EndOfBuffer,
   DelimitedBy,
@@ -228,6 +240,7 @@ const Actions = {
   UnShiftColumns,
   SplitGroups,
   UnPivotRow,
+  External,
 };
 
 const Set = {
@@ -236,6 +249,7 @@ const Set = {
   separator: (separator) => ({ SeparatedBy: separator }),
   quoteChar: (char) => ({ QuotedBy: char }),
   escapeChar: (char) => ({ EcapedBy: char }),
+  external: (func) => ({ External: func }),
 };
 const Column = {
   expect: (match) => ({ Expect: match }),
@@ -281,6 +295,8 @@ class Parser {
       debug("part", index + 1, name);
       const action = new Actions[name](this, params);
       if (action.config) action.config();
+      if (action.external)
+        this.contents = action.external(this.contents.join());
       if (action.group || action.row || action.column)
         this.contents = this.iterate(this.contents, action);
       debug("result", this.contents);
