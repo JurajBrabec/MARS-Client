@@ -1,4 +1,6 @@
 const path = require("path");
+const { Actions } = require("../TextParser");
+const { Column, Row, Set } = Actions;
 
 class Images {
   constructor(nbu) {
@@ -7,17 +9,31 @@ class Images {
       args: ["-l"],
     };
     this.parser = [
-      { split: /(\r?\n(?=IMAGE))/ },
-      { filter: "" },
-      { expect: /^IMAGE/ },
-      { split: /\r?\n/ },
-      { separated: " " },
-      { unpivot: null },
-      { separate: " " },
-      { filter: "IMAGE" },
-      { filter: "FRAG" },
-      { replace: ["*NULL*", null] },
-      { expect: 34 },
+      Set.delimiter(/(\r?\n(?=IMAGE))/),
+      Set.separator(" "),
+      Column.expect(/^IMAGE/),
+      Set.external((text) =>
+        text.split(/\r?\n(?=IMAGE)/).map((text) =>
+          text
+            .split(/\r?\n/)
+            .filter((item) => item.length)
+            .reduce((array, line, index) => {
+              if (index) {
+                array.push(
+                  [this._line, line]
+                    .join(" ")
+                    .split(" ")
+                    .filter((item) => !/IMAGE|FRAG/.test(item))
+                    .map((item) => (item === "*NULL*" ? null : item))
+                );
+              } else {
+                this._line = line;
+              }
+              return array;
+            }, [])
+        )
+      ),
+      Row.expect(34),
     ];
     this.tables = {
       bpimmedia: [
