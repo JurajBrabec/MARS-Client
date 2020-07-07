@@ -1,4 +1,6 @@
 const path = require("path");
+const { Actions } = require("../TextParser");
+const { Column, Row, Set } = Actions;
 
 class Clients {
   constructor(nbu) {
@@ -7,13 +9,15 @@ class Clients {
       args: ["-allunique", "-l"],
     };
     this.parser = [
-      { split: /\r?\n/ },
-      { filter: "" },
-      { expect: /^CLIENT/ },
-      { separate: " " },
-      { filter: "CLIENT" },
-      { replace: ["*NULL*", null] },
-      { expect: 7 },
+      Set.delimiter(/\r?\n/),
+      Set.separator(" "),
+      Column.expect(/^CLIENT/),
+      Row.split(),
+      Column.filter(""),
+      Column.separate(),
+      Column.filter("CLIENT"),
+      Column.replace(["*NULL*", null]),
+      Row.expect(7),
     ];
     this.tables = {
       bpplclients: [
