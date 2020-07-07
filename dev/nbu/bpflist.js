@@ -1,4 +1,6 @@
 const path = require("path");
+const { Actions } = require("../TextParser");
+const { Column, Row, Set } = Actions;
 
 class Files {
   constructor(nbu) {
@@ -7,15 +9,19 @@ class Files {
       file: path.join(nbu.bin, "admincmd", "bpflist.exe"),
     };
     this.parser = [
-      { split: /(\r?\n(?=FILES))/ },
-      { filter: "" },
-      { expect: /^FILES/ },
-      { replace: [/\r?\n/g, " "] },
-      { quoted: "/" },
-      { separate: " " },
-      { filter: "FILES" },
-      { replace: ["*NULL*", null] },
-      { expect: 43 },
+      Set.delimiter(/(\r?\n(?=FILES))/),
+      Set.quoteChar("/"),
+      Set.separator(" "),
+      Column.expect(/^FILES/),
+      Row.split(),
+      Column.filter(),
+      Column.replace([/\r?\n/g, " "]),
+      Column.filter(" "),
+      Column.trim(),
+      Column.separate(),
+      Column.filter("FILES"),
+      Column.replace(["*NULL*", null]),
+      Row.expect(43),
     ];
     this.tables = {
       bpflist_backupid: [
