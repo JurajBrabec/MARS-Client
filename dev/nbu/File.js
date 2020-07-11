@@ -1,7 +1,7 @@
-const debug = require("debug")("Emitter");
-const EmitterFile = require("../EmitterFile");
-const { Parser } = require("../TextParser");
-const tables = require("../../lib/Tables");
+const debug = require('debug')('File');
+const EmitterFile = require('../EmitterFile');
+const { Parser } = require('../TextParser');
+const tables = require('../../lib/Tables');
 
 class File extends EmitterFile {
   constructor(options = {}) {
@@ -19,20 +19,20 @@ class File extends EmitterFile {
     this.result = {};
   }
   asBatch(batchSize = 1) {
-    debug("asBatch", batchSize);
+    debug('asBatch', batchSize);
     tables.asBatch(batchSize);
     return this;
   }
   _data(data) {
-    debug("_data", data);
+    debug('_data', data);
     if (data) {
-      this.emit("data", data);
+      this.emit('data', data);
       this.tables.merge(this.result, data);
     }
   }
   data(...data) {
-    data = data.join("");
-    debug("data", data);
+    data = data.join('');
+    debug('data', data);
     try {
       this._data(this.tables.fromParser(this.parser.parseText(data)));
     } catch (error) {
@@ -40,7 +40,7 @@ class File extends EmitterFile {
     }
   }
   end() {
-    debug("end");
+    debug('end');
     this._data(this.tables.end());
     super.end();
   }
