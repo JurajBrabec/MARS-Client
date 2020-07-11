@@ -1,6 +1,6 @@
-const debug = require("debug")("emitterProcess");
-const { execFile } = require("child_process");
-const EmitterFile = require("./EmitterFile");
+const debug = require('debug')('emitterProcess');
+const { execFile } = require('child_process');
+const EmitterFile = require('./EmitterFile');
 
 class EmitterProcess extends EmitterFile {
   constructor(options = {}) {
@@ -13,15 +13,15 @@ class EmitterProcess extends EmitterFile {
     return this;
   }
   _run(...args) {
-    debug("_run", args);
+    debug('_run', args);
     const options = {
       encoding: this.encoding,
       maxBuffer: this.maxBuffer,
     };
     execFile(this.file, this.args, options, this._callback.bind(this))
-      .once("close", (code, signal) => debug("close", signal || code))
-      .once("error", (error) => debug("error", error))
-      .once("exit", (code, signal) => debug("exit", signal || code));
+      .once('close', (code, signal) => debug('close', signal || code))
+      .once('error', (error) => debug('error', error))
+      .once('exit', (code, signal) => debug('exit', signal || code));
   }
 }
 

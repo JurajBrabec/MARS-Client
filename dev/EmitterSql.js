@@ -1,5 +1,5 @@
-const debug = require("debug")("emitterSql");
-const EmitterFile = require("./EmitterFile");
+const debug = require('debug')('emitterSql');
+const EmitterFile = require('./EmitterFile');
 
 class EmitterSql extends EmitterFile {
   constructor(options = {}) {
@@ -12,7 +12,7 @@ class EmitterSql extends EmitterFile {
     return this;
   }
   _run(...args) {
-    debug("_run", args);
+    debug('_run', args);
     this.database
       .query(this.sql, args)
       .then((rows) => this._callback(null, JSON.stringify(rows)))

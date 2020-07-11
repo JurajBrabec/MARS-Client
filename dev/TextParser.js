@@ -1,4 +1,4 @@
-const debug = require("debug")("TextParser");
+const debug = require('debug')('TextParser');
 
 const asArray = (input) => (Array.isArray(input) ? input : [input]);
 
@@ -6,7 +6,7 @@ class Action {
   constructor(parser, params) {
     this.parser = parser;
     this.params =
-      params && typeof params.prototype === "object" ? null : params;
+      params && typeof params.prototype === 'object' ? null : params;
   }
 }
 
@@ -55,9 +55,9 @@ class Quote extends Action {
   column = (text) => {
     const q = this.quoteChar;
     return (
-      (new RegExp(`^${q}`).test(text) ? "" : q) +
+      (new RegExp(`^${q}`).test(text) ? '' : q) +
       text +
-      (new RegExp(`${q}$`).test(text) ? "" : q)
+      (new RegExp(`${q}$`).test(text) ? '' : q)
     );
   };
 }
@@ -73,16 +73,16 @@ class Reject extends Action {
 }
 class Replace extends Action {
   config = () => {
-    const [what, withText = ""] = asArray(this.params);
+    const [what, withText = ''] = asArray(this.params);
     this.regExp =
       what instanceof RegExp
         ? what
-        : new RegExp(`^${what.replace(/(?=\W)/g, "\\")}$`, "gm");
+        : new RegExp(`^${what.replace(/(?=\W)/g, '\\')}$`, 'gm');
     this.withText = withText;
   };
   column = (text) => {
     let result = text.replace(this.regExp, this.withText);
-    if (result === "null") result = null;
+    if (result === 'null') result = null;
     return result;
   };
 }
@@ -94,7 +94,7 @@ class Separate extends Action {
     const pattern = `(${q}.*?${q}|(?:\\${e + s}|[^${
       q + s
     }])+|(?<=${s}))(?=${s}|$)`;
-    this.regExp = new RegExp(pattern, "gm");
+    this.regExp = new RegExp(pattern, 'gm');
   };
   column = (text) => text.match(this.regExp);
 }
@@ -104,16 +104,16 @@ class SplitColumns extends Action {
 }
 class Trim extends Action {
   config = () => {
-    const pattern = `^${this.params || "s"}+|${this.params || "s"}+$`;
-    this.regExp = new RegExp(pattern, "gm");
+    const pattern = `^${this.params || 's'}+|${this.params || 's'}+$`;
+    this.regExp = new RegExp(pattern, 'gm');
   };
   column = (text) =>
-    this.params ? text.replace(this.regExp, "") : text.trim();
+    this.params ? text.replace(this.regExp, '') : text.trim();
 }
 class UnQuote extends Action {
   config = () => (this.quoteChar = this.params || this.parser.quoteChar);
   column = (text) =>
-    text.replace(new RegExp(`^${this.quoteChar}|${this.quoteChar}$`, "g"), "");
+    text.replace(new RegExp(`^${this.quoteChar}|${this.quoteChar}$`, 'g'), '');
 }
 class UpperCase extends Action {
   column = (text) => text.toUpperCase();
@@ -151,7 +151,7 @@ class PopColumns extends Action {
 }
 class PushColumns extends Action {
   config = () =>
-    (this.texts = this.params || this.parser.recall("columns") || []);
+    (this.texts = this.params || this.parser.recall('columns') || []);
   row = (array) => {
     this.texts.slice().forEach((text) => array.push(text));
     return array;
@@ -180,7 +180,7 @@ class UnPivotColumns extends Action {
 }
 class UnShiftColumns extends Action {
   config = () =>
-    (this.texts = this.params || this.parser.recall("columns") || []);
+    (this.texts = this.params || this.parser.recall('columns') || []);
   row = (array) => {
     this.texts
       .slice()
@@ -287,19 +287,19 @@ class Parser {
     return this.create(options);
   }
   action(action, index) {
-    debug("action", index + 1, action);
+    debug('action', index + 1, action);
     this.inGroups = null;
     this.inRows = null;
     this.inColumns = null;
     Object.entries(action).map(([name, params], index) => {
-      debug("part", index + 1, name);
+      debug('part', index + 1, name);
       const action = new Actions[name](this, params);
       if (action.config) action.config();
       if (action.external)
         this.contents = action.external(this.contents.join());
       if (action.group || action.row || action.column)
         this.contents = this.iterate(this.contents, action);
-      debug("result", this.contents);
+      debug('result', this.contents);
     });
   }
   asRow = asArray;
@@ -330,9 +330,9 @@ class Parser {
           action.SplitColumns
       );
       eob = Object.values(firstAction)[0];
-      if (typeof eob === "function") eob = this.delimiter || this.separator;
+      if (typeof eob === 'function') eob = this.delimiter || this.separator;
     }
-    if (typeof eob === "string") eob = new RegExp(eob, "g");
+    if (typeof eob === 'string') eob = new RegExp(eob, 'g');
     if (!eob.test(this.buffer)) return;
     const buffer = this.buffer.split(eob).pop();
     text = buffer.length ? this.buffer.slice(0, -buffer.length) : this.buffer;
@@ -341,13 +341,13 @@ class Parser {
   }
   clear() {
     this.actions = [];
-    this.buffer = "";
-    this.delimiter = "\n";
-    this.escapeChar = "\\";
+    this.buffer = '';
+    this.delimiter = '\n';
+    this.escapeChar = '\\';
     this.quoteChar = '"';
-    this.separator = ",";
+    this.separator = ',';
     this.memory = [];
-    return this.setText("");
+    return this.setText('');
   }
   create(actions) {
     this.clear();
@@ -369,7 +369,7 @@ class Parser {
     throw error;
   }
   iterateDebug(contents, action = {}) {
-    debug("Iterator start:", JSON.stringify(contents));
+    debug('Iterator start:', JSON.stringify(contents));
     let result = contents.reduce((contents, group, index) => {
       debug(`Group#${index + 1} start:`, JSON.stringify(group));
       let result = group;
@@ -414,7 +414,7 @@ class Parser {
       debug(`Group#${index + 1} result:`, JSON.stringify(result));
       return result;
     }, []);
-    debug("Iterator result:", JSON.stringify(result));
+    debug('Iterator result:', JSON.stringify(result));
     return result;
   }
   iterate(contents, action = {}) {
@@ -446,7 +446,7 @@ class Parser {
         .filter((group) => group.length);
     }, []);
   }
-  parseText(text = "") {
+  parseText(text = '') {
     this.setText(text);
     this.actions.map(this.action.bind(this));
     //    return this.contents;
@@ -456,7 +456,7 @@ class Parser {
     Object.entries(memory).map(([key, value]) => (this.memory[key] = value));
     return this;
   }
-  recall(memory = "") {
+  recall(memory = '') {
     return this.memory[memory];
   }
   setText(text) {
