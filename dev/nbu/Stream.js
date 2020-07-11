@@ -1,7 +1,7 @@
-const debug = require("debug")("Stream");
-const ReadableProcess = require("../ReadableProcess");
-const tables = require("../../lib/Tables");
-const TransformParser = require("../TransformParser");
+const debug = require('debug')('Stream');
+const ReadableProcess = require('../ReadableProcess');
+const tables = require('../../lib/Tables');
+const TransformParser = require('../TransformParser');
 
 class Stream extends ReadableProcess {
   constructor(options = {}) {
@@ -21,22 +21,22 @@ class Stream extends ReadableProcess {
     this.result = {};
     this.tables.asBatch(this.batchSize);
     this.transform = new TransformParser(options)
-      .on("data", this.dataTransform.bind(this))
-      .once("error", (error) => this.error(error))
-      .once("finish", this.finish.bind(this))
+      .on('data', this.dataTransform.bind(this))
+      .once('error', (error) => this.error(error))
+      .once('finish', this.finish.bind(this))
       .debug(options.debug);
     this.pipe(this.transform);
   }
   _data(data) {
-    debug("_data", data);
+    debug('_data', data);
     if (data) {
-      this.emit("data", data);
+      this.emit('data', data);
       this.tables.merge(this.result, data);
     }
   }
   data() {}
   dataTransform(data) {
-    debug("data", data);
+    debug('data', data);
     try {
       this._data(this.tables.fromParser(data));
     } catch (error) {
@@ -44,7 +44,7 @@ class Stream extends ReadableProcess {
     }
   }
   finish() {
-    debug("end");
+    debug('end');
     this._data(this.tables.end());
     super.end();
   }

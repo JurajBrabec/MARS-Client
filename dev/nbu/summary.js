@@ -1,4 +1,4 @@
-const { Nbu } = require("./nbu");
+const { Nbu } = require('./nbu');
 
 const nbu = new Nbu();
 nbu

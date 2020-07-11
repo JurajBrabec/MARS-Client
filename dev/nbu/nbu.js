@@ -1,15 +1,15 @@
-const dotenv = require("dotenv").config();
-const Emitter = require("./Emitter");
-const File = require("./File");
-const Stream = require("./Stream");
-const bpdbjobs = require("./bpdbjobs");
-const bpflist = require("./bpflist");
-const bpimmedia = require("./bpimmedia");
-const bpplclients = require("./bpplclients.js");
-const bpretlevel = require("./bpretlevel");
-const nbdevquery = require("./nbdevquery");
-const nbstl = require("./nbstl");
-const vaultxml = require("./vaultxml");
+const dotenv = require('dotenv').config();
+const Emitter = require('./Emitter');
+const File = require('./File');
+const Stream = require('./Stream');
+const bpdbjobs = require('./bpdbjobs');
+const bpflist = require('./bpflist');
+const bpimmedia = require('./bpimmedia');
+const bpplclients = require('./bpplclients.js');
+const bpretlevel = require('./bpretlevel');
+const nbdevquery = require('./nbdevquery');
+const nbstl = require('./nbstl');
+const vaultxml = require('./vaultxml');
 class Nbu {
   constructor(params) {
     params = {
@@ -26,18 +26,18 @@ class Nbu {
   }
   dateTime(value) {
     const options = {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
       hour12: false,
       //  timeZone: "America/Los_Angeles",
     };
-    return new Intl.DateTimeFormat("en-US", options)
+    return new Intl.DateTimeFormat('en-US', options)
       .format(value)
-      .replace(",", "");
+      .replace(',', '');
   }
   dateDiff(diffDays = 0) {
     return this.dateTime(new Date().setDate(new Date().getDate() + diffDays));

@@ -1,4 +1,4 @@
-const { Nbu } = require("./nbu");
+const { Nbu } = require('./nbu');
 
 const nbu = new Nbu();
 
@@ -11,9 +11,9 @@ async function main() {
       .run();
     console.log(objects);
   } catch (error) {
-    console.log("Error: ", error);
+    console.log('Error: ', error);
   } finally {
-    console.log("Done");
+    console.log('Done');
   }
 }
 
