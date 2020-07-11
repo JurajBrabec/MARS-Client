@@ -1,6 +1,6 @@
 const path = require('path');
 const { Actions } = require('../TextParser');
-const { Column, Row, Set } = Actions;
+const { Column, Set } = Actions;
 
 class Images {
   constructor(nbu) {
@@ -12,34 +12,7 @@ class Images {
       Set.delimiter(/(\r?\n(?=IMAGE))/),
       Set.separator(' '),
       Column.expect(/^IMAGE/),
-      Set.external((text) => {
-        const images = [];
-        const frags = [];
-        text.split(/\r?\n(?=IMAGE)/).map((text) =>
-          text
-            .split(/\r?\n/)
-            .filter((item) => item.length)
-            .map((line, index) => {
-              if (index) {
-                const frag = line
-                  .split(' ')
-                  .filter((item) => !/FRAG/.test(item))
-                  .map((item) => (item === '*NULL*' ? null : item));
-                frag.unshift(this.backupId);
-                frags.push(frag);
-              } else {
-                const image = line
-                  .split(' ')
-                  .filter((item) => !/IMAGE/.test(item))
-                  .map((item) => (item === '*NULL*' ? null : item));
-                images.push(image);
-                this.backupId = image[2];
-              }
-            })
-        );
-        return [images, frags];
-      }),
-      //      Row.expect(34),
+      Set.external(this.parse),
     ];
     this.tables = {
       bpimmedia: [
@@ -84,6 +57,33 @@ class Images {
       ],
     };
   }
+  parse = (text) => {
+    const images = [];
+    const frags = [];
+    text.split(/\r?\n(?=IMAGE)/).map((text) =>
+      text
+        .split(/\r?\n/)
+        .filter((item) => item.length)
+        .map((line, index) => {
+          if (index) {
+            const frag = line
+              .split(' ')
+              .filter((item) => !/FRAG/.test(item))
+              .map((item) => (item === '*NULL*' ? null : item));
+            frag.unshift(this.backupId);
+            frags.push(frag);
+          } else {
+            const image = line
+              .split(' ')
+              .filter((item) => !/IMAGE/.test(item))
+              .map((item) => (item === '*NULL*' ? null : item));
+            images.push(image);
+            this.backupId = image[2];
+          }
+        })
+    );
+    return [images, frags];
+  };
 }
 
 class ImagesAll extends Images {}
