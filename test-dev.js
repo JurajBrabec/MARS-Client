@@ -1,26 +1,49 @@
-const fs = require("fs");
-const { Nbu } = require("./dev/nbu/nbu");
-const { Jobs } = require("./dev/nbu/bpdbjobs");
-const { Actions, Parser } = require("./dev/TextParser");
-const tables = require("./lib/Tables");
+const fs = require('fs');
+const { Nbu } = require('./dev/nbu/nbu');
+const { SLPs } = require('./dev/nbu/nbstl');
+const { Actions, Parser } = require('./dev/TextParser');
+const tables = require('./lib/Tables');
 
 const nbu = new Nbu();
-const command = new Jobs(nbu);
+const command = new SLPs(nbu);
 tables.create(command.tables);
 
-const text = fs.readFileSync(
-  "D:\\Veritas\\Netbackup\\bin\\admincmd\\bpdbjobs\\reportmost_columns.txt",
-  { encoding: "utf8" }
+let text = fs.readFileSync(
+  'D:\\Veritas\\Netbackup\\bin\\admincmd\\nbstl\\l.txt',
+  { encoding: 'utf8' }
 );
-const { Column, Row } = Actions;
+const { Row, Set } = Actions;
 const actions = [
-  Column.expect(/^\d+,/),
-  Row.split(/\r?\n/m),
-  Column.filter(""),
-  Column.separate(","),
-  Row.expect(64),
+  Set.delimiter(/\r?\n(?=[A-Za-z]+)/),
+  Set.separator(' '),
+  Set.external((text) => [
+    text.split(/\r?\n(?=[A-Za-z]+)/).reduce(
+      (array, text) => [
+        ...array,
+        ...text
+          .split(/\r?\n/)
+          .map((item) => item.trim())
+          .filter((item) => item.length)
+          .reduce((array, line, index) => {
+            if (index) {
+              array.push(
+                [firstLine, line]
+                  .join(' ')
+                  .split(' ')
+                  .map((item) => (item === '*NULL*' ? null : item))
+              );
+            } else {
+              firstLine = line;
+            }
+            return array;
+          }, []),
+      ],
+      []
+    ),
+  ]),
+  Row.expect(21),
 ];
-const parser = new Parser(actions);
+const parser = new Parser(actions).debug();
 const result = parser.parseText(text);
 console.log(tables.fromParser(result));
 
