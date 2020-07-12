@@ -56,6 +56,12 @@ class Nbu {
   get masterServer() {
     return this._masterServer;
   }
+  async allClients(options = {}) {
+    await this.init();
+    options.command = new bpplclients.Clients(this);
+    const clients = await new Emitter(options).run();
+    return clients;
+  }
   async clients(options = {}) {
     await this.init();
     options.command = new bpplclients.Clients(this);
