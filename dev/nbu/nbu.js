@@ -6,6 +6,7 @@ const bpdbjobs = require('./bpdbjobs');
 const bpflist = require('./bpflist');
 const bpimmedia = require('./bpimmedia');
 const bpplclients = require('./bpplclients.js');
+const bpplist = require('./bppllist.js');
 const bpretlevel = require('./bpretlevel');
 const nbdevquery = require('./nbdevquery');
 const nbstl = require('./nbstl');
@@ -86,6 +87,11 @@ class Nbu {
       options.command = new bpdbjobs.JobId(this, options.jobId);
     return new Stream(options);
   }
+  async policies(options = {}) {
+    await this.init();
+    options.command = new bpplist.Policies(this);
+    return new Stream(options);
+  }
   async pureDisks(options = {}) {
     await this.init();
     options.command = new nbdevquery.PureDisks(this);
@@ -101,14 +107,14 @@ class Nbu {
     options.command = new nbstl.SLPs(this);
     return new Emitter(options);
   }
+  summary(options = {}) {
+    options.command = new bpdbjobs.Summary(this);
+    return new Emitter(options);
+  }
   async vaults(options = {}) {
     await this.init();
     options.command = new vaultxml.Vaults(this);
     return new File(options);
-  }
-  summary(options = {}) {
-    options.command = new bpdbjobs.Summary(this);
-    return new Emitter(options);
   }
 }
 
