@@ -86,7 +86,12 @@ class Images {
   };
 }
 
-class ImagesAll extends Images {}
+class ImagesAll extends Images {
+  constructor(nbu, clients) {
+    super(nbu);
+    this.process.args.push('-client', clients);
+  }
+}
 class ImagesClient extends Images {
   constructor(nbu, client) {
     super(nbu);

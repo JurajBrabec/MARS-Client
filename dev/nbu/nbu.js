@@ -69,7 +69,13 @@ class Nbu {
   }
   async files(options = {}) {
     await this.init();
-    if (options.all) options.command = new bpflist.FilesAll(this); //TODO: all clients iteration
+    if (options.all) {
+      const clients = (await this.allClients()).bpplclients.map(
+        (client) => client.name
+      );
+      options.command = new bpflist.FilesAll(this, clients);
+      return new Emitter(options);
+    }
     if (options.backupId)
       options.command = new bpflist.FilesBackupId(this, options.backupId);
     if (options.client)
@@ -78,7 +84,13 @@ class Nbu {
   }
   async images(options = { daysBack: 3 }) {
     await this.init();
-    if (options.all) options.command = new bpimmedia.ImagesAll(this); //TODO: all clients iteration
+    if (options.all) {
+      const clients = (await this.allClients()).bpplclients.map(
+        (client) => client.name
+      );
+      options.command = new bpimmedia.ImagesAll(this, clients);
+      return new Emitter(options);
+    }
     if (options.client)
       options.command = new bpimmedia.ImagesClient(this, options.client);
     if (options.days)

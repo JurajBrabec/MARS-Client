@@ -74,7 +74,12 @@ class Files {
   }
 }
 
-class FilesAll extends Files {}
+class FilesAll extends Files {
+  constructor(nbu, clients) {
+    super(nbu);
+    this.process.args.push('-client', clients);
+  }
+}
 class FilesBackupId extends Files {
   constructor(nbu, backupId) {
     super(nbu);
