@@ -1,11 +1,12 @@
 const { Nbu } = require('./nbu');
+const Database = require('../Database');
 
 const nbu = new Nbu();
 nbu
   .jobs()
   //  .jobs({all:true})
   //  .jobs({daysBack:1})
-  .on('data', (data) => console.log(data))
+  .on('data', async (data) => console.log(await Database.batch(data)))
   .run()
-  .then(() => console.log('Done'))
-  .catch((error) => console.log(error));
+  .catch((error) => console.log('Error:', error))
+  .finally(() => Database.end());

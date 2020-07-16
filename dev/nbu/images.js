@@ -1,4 +1,5 @@
 const { Nbu } = require('./nbu');
+const Database = require('../Database');
 
 const nbu = new Nbu();
 
@@ -8,14 +9,14 @@ async function main() {
     //    const stream = await nbu.images({client:"test"});
     //    const stream = await nbu.images({daysBack:1});
     await stream
-      .asBatch()
-      .on('data', (data) => console.log(data))
+      .asBatch(2048)
+      .on('data', async (data) => console.log(await Database.batch(data)))
       .on('progress', (progress) => console.log(progress))
       .run();
   } catch (error) {
     console.log('Error: ', error);
   } finally {
-    console.log('Done');
+    Database.end();
   }
 }
 

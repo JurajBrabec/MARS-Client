@@ -14,14 +14,21 @@ params = {
   acquireTimeout: 300000,
 };
 
+function batch(objects) {
+  debug('batch', objects);
+  return Promise.all(
+    Object.values(objects).map((table) => pool.batch(table.sql, table.rows))
+  );
+}
 function debugEnabled(enabled = true) {
   debug.enabled = enabled;
   return this;
 }
-function end() {
+async function end() {
+  if (pool.taskQueueSize()) return setTimeout(end, 250);
   debug('end');
-  release();
-  return pool.end();
+  await release();
+  await pool.end();
 }
 function query(sql, args) {
   debug('query', sql, args);
@@ -50,8 +57,17 @@ pool = mariadb
   .createPool(params)
   .on('acquire', () => debug(`connection acquired`))
   .on('connection', (conn) => debug(`connection ${conn.threadId} created`))
-  .on('enqueue', () => debug(`command enqueued`))
+  .on('enqueue', () => debug(`command enqueued (Q=${pool.taskQueueSize()})`))
   .on('error', (err) => debug(`error ${err.message}`))
-  .on('release', (conn) => debug(`connection ${conn.threadId} released`));
+  .on('release', (conn) =>
+    debug(`connection ${conn.threadId} released (Q=${pool.taskQueueSize()})`)
+  );
 
-module.exports = { debug: debugEnabled, end, query, queryStream, release };
+module.exports = {
+  batch,
+  debug: debugEnabled,
+  end,
+  query,
+  queryStream,
+  release,
+};

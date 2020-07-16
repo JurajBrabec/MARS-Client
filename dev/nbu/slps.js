@@ -1,4 +1,5 @@
 const { Nbu } = require('./nbu');
+const Database = require('../Database');
 
 const nbu = new Nbu();
 
@@ -7,13 +8,13 @@ async function main() {
     const stream = await nbu.slps();
     const objects = await stream
       //      .on("data", (data) => console.log(data))
-      .asBatch()
+      .asBatch(2048)
       .run();
-    console.log(objects);
+    console.log('Done:', await Database.batch(objects));
   } catch (error) {
-    console.log('Error: ', error);
+    console.log('Error:', error);
   } finally {
-    console.log('Done');
+    Database.end();
   }
 }
 

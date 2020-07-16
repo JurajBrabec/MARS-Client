@@ -1,10 +1,13 @@
 const { Nbu } = require('./nbu');
+const Database = require('../Database');
 
 const nbu = new Nbu();
 nbu
   .summary()
-  //  .asBatch()
+  .asBatch()
   //  .on("data", (data) => console.log(data))
   .run()
-  .then((objects) => console.log(objects))
-  .catch((error) => console.log(error));
+  .then((objects) => Database.batch(objects))
+  .then((result) => console.log('Done:', result))
+  .catch((error) => console.log('Error:', error))
+  .finally(() => Database.end());
