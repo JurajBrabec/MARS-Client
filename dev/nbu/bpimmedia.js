@@ -99,9 +99,9 @@ class ImagesClient extends Images {
   }
 }
 class ImagesDaysBack extends Images {
-  constructor(nbu, days) {
+  constructor(nbu, daysBack) {
     super(nbu);
-    this.process.args.push('-d', nbu.datteDiff(days));
+    this.process.args.push('-d', nbu.dateDiff(daysBack));
   }
 }
 
