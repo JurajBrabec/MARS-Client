@@ -11,7 +11,7 @@ nbu
   //  .images({ all: true })
   //  .images({ client: 'hostname' })
   //  .images({ daysBack: 3 })
-  //  .jobs()
+  // .jobs()
   //  .jobs({ all: true })
   //  .jobs({ daysBack: 1 })
   //  .policies()
@@ -20,6 +20,6 @@ nbu
   //  .slps()
   //  .summary()
   //  .vaults()
-  .then((result) => console.log('Result:', result))
+  .then((result) => result && console.log('Result:', result))
   .catch((error) => console.log('Error: ', error))
   .finally(() => nbu.end());

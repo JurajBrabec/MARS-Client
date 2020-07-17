@@ -56,65 +56,75 @@ class Nbu {
       }
     return this;
   }
+  async stream(options) {
+    return await new Stream(options)
+      .on('data', async (data) => console.log(await Database.batch(data)))
+      .run();
+  }
+  async multiEmitter(options) {
+    return await new Emitter(options)
+      .asBatch(2048)
+      .on('data', async (data) => console.log(await Database.batch(data)))
+      .on('progress', (progress) => console.log(progress))
+      .run();
+  }
+  async emitter(options) {
+    const objects = await new Emitter(options)
+      .asBatch(2048)
+      .on('progress', (progress) => console.log(progress))
+      .run();
+    return await Database.batch(objects);
+  }
+  async file(options) {
+    const objects = await new File(options)
+      .asBatch(2048)
+      .on('progress', (progress) => console.log(progress))
+      .run();
+    return await Database.batch(objects);
+  }
   async end() {
     await Database.end();
   }
   get masterServer() {
     return this._masterServer;
   }
-  async allClients(options = {}) {
+  async allClients() {
     await this.init();
-    options.command = new bpplclients.Clients(this);
-    return await new Emitter(options).run();
+    const clients = await new Emitter({
+      command: new bpplclients.Clients(this),
+    }).run();
+    return clients.bpplclients.map((client) => client.name);
   }
   async clients(options = {}) {
     await this.init();
     options.command = new bpplclients.Clients(this);
-    return await new Stream(options)
-      .on('data', async (data) => console.log(await Database.batch(data)))
-      .run();
+    return this.stream(options);
   }
   async files(options = { all: true }) {
     await this.init();
     if (options.all) {
-      const clients = (await this.allClients()).bpplclients.map(
-        (client) => client.name
-      );
+      const clients = await this.allClients();
       options.command = new bpflist.FilesAll(this, clients);
-      return await new Emitter(options)
-        .asBatch(2048)
-        .on('data', async (data) => console.log(await Database.batch(data)))
-        .on('progress', (progress) => console.log(progress))
-        .run();
+      return this.multiEmitter(options);
     }
     if (options.backupId)
       options.command = new bpflist.FilesBackupId(this, options.backupId);
     if (options.client)
       options.command = new bpflist.FilesClient(this, options.client);
-    return await new Stream(options)
-      .on('data', async (data) => console.log(await Database.batch(data)))
-      .run();
+    return this.stream(options);
   }
   async images(options = { daysBack: 3 }) {
     await this.init();
     if (options.all) {
-      const clients = (await this.allClients()).bpplclients.map(
-        (client) => client.name
-      );
+      const clients = await this.allClients();
       options.command = new bpimmedia.ImagesAll(this, clients);
-      return await new Emitter(options)
-        .asBatch(2048)
-        .on('data', async (data) => console.log(await Database.batch(data)))
-        .on('progress', (progress) => console.log(progress))
-        .run();
+      return this.multiEmitter(options);
     }
     if (options.client)
       options.command = new bpimmedia.ImagesClient(this, options.client);
     if (options.daysBack)
       options.command = new bpimmedia.ImagesDaysBack(this, options.daysBack);
-    return await new Stream(options)
-      .on('data', async (data) => console.log(await Database.batch(data)))
-      .run();
+    return this.stream(options);
   }
   async jobs(options = { daysBack: 3 }) {
     if (options.all) options.command = new bpdbjobs.JobsAll(this);
@@ -122,45 +132,36 @@ class Nbu {
       options.command = new bpdbjobs.JobsDaysBack(this, options.daysBack);
     if (options.jobId)
       options.command = new bpdbjobs.JobId(this, options.jobId);
-    return await new Stream(options)
-      .on('data', async (data) => console.log(await Database.batch(data)))
-      .run();
+    return this.stream(options);
   }
   async policies(options = {}) {
     await this.init();
     options.command = new bpplist.Policies(this);
-    return await new Stream(options)
-      .on('data', async (data) => console.log(await Database.batch(data)))
-      .run();
+    return this.stream(options);
   }
   async pureDisks(options = {}) {
     await this.init();
     options.command = new nbdevquery.PureDisks(this);
-    const objects = await new Emitter(options).asBatch(2048).run();
-    return await Database.batch(objects);
+    return this.emitter(options);
   }
   async retlevels(options = {}) {
     await this.init();
     options.command = new bpretlevel.Retlevels(this);
-    const objects = await new Emitter(options).asBatch(2048).run();
-    return await Database.batch(objects);
+    return this.emitter(options);
   }
   async slps(options = {}) {
     await this.init();
     options.command = new nbstl.SLPs(this);
-    const objects = await new Emitter(options).asBatch(2048).run();
-    return await Database.batch(objects);
+    return this.emitter(options);
   }
   async summary(options = {}) {
     options.command = new bpdbjobs.Summary(this);
-    const objects = await new Emitter(options).asBatch().run();
-    return await Database.batch(objects);
+    return this.emitter(options);
   }
   async vaults(options = {}) {
     await this.init();
     options.command = new vaultxml.Vaults(this);
-    const objects = await new File(options).asBatch(2048).run();
-    return await Database.batch(objects);
+    return this.file(options);
   }
 }
 
