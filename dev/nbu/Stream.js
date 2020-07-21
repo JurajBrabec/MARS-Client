@@ -19,7 +19,7 @@ class Stream extends ReadableProcess {
     };
     super(options);
     this.result = {};
-    this.tables.asBatch(this.batchSize);
+    this.asBatch();
     this.transform = new TransformParser(options)
       .on('data', this.dataTransform.bind(this))
       .once('error', (error) => this.error(error))
@@ -33,6 +33,11 @@ class Stream extends ReadableProcess {
       this.emit('data', data);
       this.tables.merge(this.result, data);
     }
+  }
+  asBatch(batchSize = this.batchSize) {
+    debug('asBatch', batchSize);
+    this.tables.asBatch(batchSize);
+    return this;
   }
   data() {}
   dataTransform(data) {
