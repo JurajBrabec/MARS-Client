@@ -1,5 +1,4 @@
 const dotenv = require('dotenv').config();
-const Database = require('../Database');
 const Emitter = require('./Emitter');
 const File = require('./File');
 const Stream = require('./Stream');
@@ -25,6 +24,9 @@ class Nbu {
     Object.assign(this, params);
     this._masterServer = null;
     return this;
+  }
+  get masterServer() {
+    return this._masterServer;
   }
   dateTime(value) {
     const options = {
@@ -56,38 +58,6 @@ class Nbu {
       }
     return this;
   }
-  async stream(options) {
-    return await new Stream(options)
-      .on('data', async (data) => console.log(await Database.batch(data)))
-      .run();
-  }
-  async multiEmitter(options) {
-    return await new Emitter(options)
-      .asBatch(2048)
-      .on('data', async (data) => console.log(await Database.batch(data)))
-      .on('progress', (progress) => console.log(progress))
-      .run();
-  }
-  async emitter(options) {
-    const objects = await new Emitter(options)
-      .asBatch(2048)
-      .on('progress', (progress) => console.log(progress))
-      .run();
-    return await Database.batch(objects);
-  }
-  async file(options) {
-    const objects = await new File(options)
-      .asBatch(2048)
-      .on('progress', (progress) => console.log(progress))
-      .run();
-    return await Database.batch(objects);
-  }
-  async end() {
-    await Database.end();
-  }
-  get masterServer() {
-    return this._masterServer;
-  }
   async allClients() {
     await this.init();
     const clients = await new Emitter({
@@ -98,33 +68,33 @@ class Nbu {
   async clients(options = {}) {
     await this.init();
     options.command = new bpplclients.Clients(this);
-    return this.stream(options);
+    return new Stream(options);
   }
   async files(options = { all: true }) {
     await this.init();
     if (options.all) {
       const clients = await this.allClients();
       options.command = new bpflist.FilesAll(this, clients);
-      return this.multiEmitter(options);
+      return new Emitter(options);
     }
     if (options.backupId)
       options.command = new bpflist.FilesBackupId(this, options.backupId);
     if (options.client)
       options.command = new bpflist.FilesClient(this, options.client);
-    return this.stream(options);
+    return new Stream(options);
   }
   async images(options = { daysBack: 3 }) {
     await this.init();
     if (options.all) {
       const clients = await this.allClients();
       options.command = new bpimmedia.ImagesAll(this, clients);
-      return this.multiEmitter(options);
+      return new Emitter(options);
     }
     if (options.client)
       options.command = new bpimmedia.ImagesClient(this, options.client);
     if (options.daysBack)
       options.command = new bpimmedia.ImagesDaysBack(this, options.daysBack);
-    return this.stream(options);
+    return new Stream(options);
   }
   async jobs(options = { daysBack: 3 }) {
     if (options.all) options.command = new bpdbjobs.JobsAll(this);
@@ -132,36 +102,36 @@ class Nbu {
       options.command = new bpdbjobs.JobsDaysBack(this, options.daysBack);
     if (options.jobId)
       options.command = new bpdbjobs.JobId(this, options.jobId);
-    return this.stream(options);
+    return new Stream(options);
   }
   async policies(options = {}) {
     await this.init();
     options.command = new bpplist.Policies(this);
-    return this.stream(options);
+    return new Stream(options);
   }
   async pureDisks(options = {}) {
     await this.init();
     options.command = new nbdevquery.PureDisks(this);
-    return this.emitter(options);
+    return new Emitter(options);
   }
   async retlevels(options = {}) {
     await this.init();
     options.command = new bpretlevel.Retlevels(this);
-    return this.emitter(options);
+    return new Emitter(options);
   }
   async slps(options = {}) {
     await this.init();
     options.command = new nbstl.SLPs(this);
-    return this.emitter(options);
+    return new Emitter(options);
   }
   async summary(options = {}) {
     options.command = new bpdbjobs.Summary(this);
-    return this.emitter(options);
+    return new Emitter(options);
   }
   async vaults(options = {}) {
     await this.init();
     options.command = new vaultxml.Vaults(this);
-    return this.file(options);
+    return new File(options);
   }
 }
 
