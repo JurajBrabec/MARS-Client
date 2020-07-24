@@ -5,6 +5,7 @@
   "main": "./mars.js",
   "scripts": {
     "build": "rollup --config",
+    "start": "node ./mars.js",
     "test": "jest --coverage",
     "debug": "node --inspect-brk ./mars.js"
   },
