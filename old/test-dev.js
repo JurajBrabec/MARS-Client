@@ -1,7 +1,7 @@
-const { Nbu } = require('./dev/nbu/nbu');
+const { NetBackup } = require('./lib/NetBackup');
 
-const nbu = new Nbu();
-nbu
+const netBackup = new NetBackup();
+netBackup
   .clients()
   //  .files()
   //  .files({ all: true })
@@ -22,4 +22,4 @@ nbu
   //  .vaults()
   .then((result) => result && console.log('Result:', result))
   .catch((error) => console.log('Error: ', error))
-  .finally(() => nbu.end());
+  .finally(() => netBackup.end());
