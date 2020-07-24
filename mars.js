@@ -9,20 +9,20 @@ const { NetBackup } = require('./lib/NetBackup');
 const startTime = moment();
 
 const crons = {
-  summary: '* */5 * * * *',
-  clients: process.env.CRON_CONFIG,
-  policies: process.env.CRON_CONFIG,
-  slps: process.env.CRON_CONFIG,
-  vaults: process.env.CRON_CONFIG,
-  pureDisks: process.env.CRON_CONFIG,
-  retLevels: process.env.CRON_CONFIG,
-  files: process.env.CRON_DETAILS,
-  images: process.env.CRON_DETAILS,
-  jobs: process.env.CRON_JOBS,
+  summary: '* */1 * * * *',
+  clients: process.env.CRON_CONFIG || '* * */1 * * *',
+  policies: process.env.CRON_CONFIG || '* * */1 * * *',
+  slps: process.env.CRON_CONFIG || '* * */1 * * *',
+  vaults: process.env.CRON_CONFIG || '* * */1 * * *',
+  pureDisks: process.env.CRON_CONFIG || '* * */1 * * *',
+  retLevels: process.env.CRON_CONFIG || '* * */1 * * *',
+  files: process.env.CRON_DETAILS || '* * */4 * * *',
+  images: process.env.CRON_DETAILS || '* * */4 * * *',
+  jobs: process.env.CRON_JOBS || '* */5 * * * *',
   allImages: '* * 12 * * *',
   allJobs: '* * 12 * * *',
-  tickets: process.env.CRON_TICKETS,
-  esl: process.env.CRON_ESL,
+  tickets: process.env.CRON_TICKETS || '* */5 * * * *',
+  esl: process.env.CRON_ESL || '* * */4 * * *',
 };
 
 cli.println(cli.box(cli.bold.white(`MARS v${pkg.version}`)));
