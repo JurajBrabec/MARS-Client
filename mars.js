@@ -175,7 +175,12 @@ async function execTickets() {
 async function execEsl() {
   execute(await netBackup.esl());
 }
-
+async function execute(task) {
+  const Database = require('./lib/Database');
+  await runTask(task.on('data', (data) => Database.batch(data)));
+  await Database.end();
+  cli.println('Done.');
+}
 function onProgress(progress) {
   cli.progress.update({
     amount: progress / 100,
@@ -198,15 +203,10 @@ function progressStart() {
     },
   });
 }
-async function execute(source) {
-  const Database = require('./lib/Database');
+async function runTask(task) {
   try {
     progressStart();
-    await source
-      .asBatch(2048)
-      .on('data', (data) => Database.batch(data))
-      .on('progress', onProgress)
-      .run();
+    await task.asBatch(2048).on('progress', onProgress).run();
   } catch (err) {
     cli.progress.erase();
     if (
@@ -215,93 +215,74 @@ async function execute(source) {
       err instanceof TypeError
     )
       throw err;
-    cli.warn(cli.red(`Error: ${err.message}\n`));
+    cli.warn(cli.red('Error: ' + err.message));
   } finally {
     cli.progress.end();
-    await Database.end();
-    cli.println('Done.');
   }
 }
-
 async function scheduler(cmd) {
   const Database = require('./lib/Database');
-  try {
-    for (const taskName in crons) {
-      const cron = Cron(crons[taskName]);
-      const inSec = Math.floor(cron.msToNext() / 1000);
-      const atDate = moment(cron.next());
-      if (cmd.list) {
-        const line = `${taskName} ${
-          inSec ? cli.blue(atDate.from(startTime)) : cli.white.bold('now')
-        } (at ${atDate.format('H:mm')})`;
-        cli.println(line);
-      }
-      if (cmd.list || inSec > 0) continue;
-      let task;
-      switch (taskName) {
-        case 'summary':
-          task = await netBackup.summary();
-          break;
-        case 'clients':
-          task = await netBackup.clients();
-          break;
-        case 'policies':
-          task = await netBackup.policies();
-          break;
-        case 'slps':
-          task = await netBackup.slps();
-          break;
-        case 'vaults':
-          task = await netBackup.vaults();
-          break;
-        case 'pureDisks':
-          task = await netBackup.pureDisks();
-          break;
-        case 'retLevels':
-          task = await netBackup.retlevels();
-          break;
-        case 'jobs':
-          task = await netBackup.jobs({ daysBack: 1 });
-          break;
-        case 'allJobs':
-          task = await netBackup.jobs({ all: true });
-          break;
-        case 'files':
-          task = await netBackup.files({ all: true });
-          break;
-        case 'images':
-          task = await netBackup.images({ daysBack: 1 });
-          break;
-        case 'allImages':
-          task = await netBackup.images({ all: true });
-          break;
-        case 'tickets':
-          task = await netBackup.tickets();
-          break;
-        case 'esl':
-          task = await netBackup.esl();
-          break;
-      }
-      console.log('Executing', taskName);
-      progressStart();
-      await task
-        .asBatch(2048)
-        .on('data', (data) => Database.batch(data))
-        .on('progress', onProgress)
-        .run();
-      cli.progress.end();
+  for (const taskName in crons) {
+    const cron = Cron(crons[taskName]);
+    const inSec = Math.floor(cron.msToNext() / 1000);
+    const atDate = moment(cron.next());
+    if (cmd.list) {
+      const line = `${taskName} ${
+        inSec ? cli.blue(atDate.from(startTime)) : cli.white.bold('now')
+      } (at ${atDate.format('H:mm')})`;
+      cli.println(line);
     }
-  } catch (err) {
-    cli.progress.erase();
-    if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
-    )
-      throw err;
-    cli.print(cli.red('Error: ' + err.message));
-  } finally {
-    await Database.end();
-    cli.println('Done.');
+    if (cmd.list || inSec > 0) continue;
+    let task;
+    switch (taskName) {
+      case 'summary':
+        task = await netBackup.summary();
+        break;
+      case 'clients':
+        task = await netBackup.clients();
+        break;
+      case 'policies':
+        task = await netBackup.policies();
+        break;
+      case 'slps':
+        task = await netBackup.slps();
+        break;
+      case 'vaults':
+        task = await netBackup.vaults();
+        break;
+      case 'pureDisks':
+        task = await netBackup.pureDisks();
+        break;
+      case 'retLevels':
+        task = await netBackup.retlevels();
+        break;
+      case 'jobs':
+        task = await netBackup.jobs({ daysBack: 1 });
+        break;
+      case 'allJobs':
+        task = await netBackup.jobs({ all: true });
+        break;
+      case 'files':
+        task = await netBackup.files({ all: true });
+        break;
+      case 'images':
+        task = await netBackup.images({ daysBack: 1 });
+        break;
+      case 'allImages':
+        task = await netBackup.images({ all: true });
+        break;
+      case 'tickets':
+        task = await netBackup.tickets();
+        break;
+      case 'esl':
+        task = await netBackup.esl();
+        break;
+      default:
+        continue;
+    }
+    cli.println(`Executing ${taskName}...`);
+    await runTask(task.on('data', (data) => Database.batch(data)));
   }
+  await Database.end();
+  cli.println('Done.');
 }
