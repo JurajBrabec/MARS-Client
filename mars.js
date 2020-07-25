@@ -82,37 +82,30 @@ program.addCommand(command);
 program.parse(process.argv);
 
 async function execSummary() {
-  cli.println(`Reading summary...`);
   execute(await netBackup.summary());
 }
 
 async function execSlps() {
-  cli.println(`Reading SLP's...`);
   execute(await netBackup.slps());
 }
 
 async function execClients() {
-  cli.println(`Reading clients...`);
   execute(await netBackup.clients());
 }
 
 async function execPolicies() {
-  cli.println(`Reading policies...`);
   execute(await netBackup.policies());
 }
 
 async function execRetLevels() {
-  cli.println(`Reading retention levels...`);
   execute(await netBackup.retlevels());
 }
 
 async function execPureDisks() {
-  cli.println(`Reading pure disks...`);
   execute(await netBackup.pureDisks());
 }
 
 async function execVaults() {
-  cli.println(`Reading vaults...`);
   execute(await netBackup.vaults());
 }
 
@@ -123,14 +116,9 @@ async function execJobs(cmd) {
   if (cmd.jobid) args = { jobId: cmd.jobid };
   if (cmd.all) args = { all: true };
   if (args) {
-    cli.println(
-      `Reading${args.all ? ' all ' : ' '}jobs ${
-        args.daysBack ? `for ${args.daysBack} days back` : ''
-      }...`
-    );
     execute(await netBackup.jobs(args));
   } else {
-    cli.println(`No argument given.`);
+    cli.warn(`No argument given.`);
   }
 }
 
@@ -140,14 +128,9 @@ async function execFiles(cmd) {
   if (cmd.client) args = { client: cmd.client };
   if (cmd.all) args = { all: true };
   if (args) {
-    cli.println(
-      `Reading${args.all ? ' all ' : ' '}files ${
-        args.backupId ? `for backup ID '${args.backupId}'` : ''
-      }${args.client ? `for host '${args.client}'` : ''}...`
-    );
     execute(await netBackup.files(args));
   } else {
-    cli.println(`No argument given.`);
+    cli.warn(`No argument given.`);
   }
 }
 
@@ -157,14 +140,9 @@ async function execImages(cmd) {
   if (cmd.client) args = { client: cmd.client };
   if (cmd.all) args = { all: true };
   if (args) {
-    cli.println(
-      `Reading${args.all ? ' all ' : ' '}images ${
-        args.client ? `for host '${args.client}'` : ''
-      }${args.daysBack ? `for ${args.daysBack} dyas back` : ''}...`
-    );
     execute(await netBackup.images(args));
   } else {
-    cli.println(`No argument given.`);
+    cli.warn(`No argument given.`);
   }
 }
 
@@ -184,7 +162,7 @@ async function execute(task) {
 function onProgress(progress) {
   cli.progress.update({
     amount: progress / 100,
-    width: cli.width() - 30,
+    width: cli.width() - 40,
   });
 }
 function progressStart() {
@@ -192,7 +170,7 @@ function progressStart() {
     exitOnSig: true,
     catchCrash: true,
     unicode: true,
-    width: cli.width() - 30,
+    width: cli.width() - 40,
     braces: ['[', ']'],
     styles: {
       spinner: ['bold', 'green'],
@@ -205,6 +183,7 @@ function progressStart() {
 }
 async function runTask(task) {
   try {
+    cli.println(task.description);
     progressStart();
     await task.asBatch(2048).on('progress', onProgress).run();
   } catch (err) {
@@ -215,7 +194,7 @@ async function runTask(task) {
       err instanceof TypeError
     )
       throw err;
-    cli.warn(cli.red('Error: ' + err.message));
+    cli.warn(cli.red('Error: ' + err.message || err));
   } finally {
     cli.progress.end();
   }
@@ -280,7 +259,6 @@ async function scheduler(cmd) {
       default:
         continue;
     }
-    cli.println(`Executing ${taskName}...`);
     await runTask(task.on('data', (data) => Database.batch(data)));
   }
   await Database.end();
