@@ -25,7 +25,7 @@ const crons = {
   esl: process.env.CRON_ESL || '* * */4 * * *',
 };
 
-cli.println(cli.box(cli.bold.white(`MARS v${pkg.version}`)));
+cli.println(cli.bold.white(`MARS v${pkg.version}`));
 cli.setLogFile(`./log/${pkg.name}.log`);
 
 const netBackup = new NetBackup();
@@ -133,7 +133,6 @@ async function execFiles(cmd) {
     cli.warn(`No argument given.`);
   }
 }
-
 async function execImages(cmd) {
   let args;
   if (cmd.days) args = { daysBack: cmd.days };
@@ -145,19 +144,32 @@ async function execImages(cmd) {
     cli.warn(`No argument given.`);
   }
 }
-
 async function execTickets() {
   execute(await netBackup.tickets());
 }
-
 async function execEsl() {
   execute(await netBackup.esl());
 }
 async function execute(task) {
   const Database = require('./lib/Database');
-  await runTask(task.on('data', (data) => Database.batch(data)));
+  await runTask(
+    task.on('data', (data) =>
+      Database.batch(data).catch((e) => errorHandler(e))
+    )
+  );
   await Database.end();
   cli.println('Done.');
+}
+
+function errorHandler(error) {
+  cli.progress.erase();
+  if (
+    error instanceof SyntaxError ||
+    error instanceof ReferenceError ||
+    error instanceof TypeError
+  )
+    throw error;
+  cli.warnln(cli.red('Error: ' + error));
 }
 function onProgress(progress) {
   cli.progress.update({
@@ -186,15 +198,8 @@ async function runTask(task) {
     cli.println(task.description);
     progressStart();
     await task.asBatch(2048).on('progress', onProgress).run();
-  } catch (err) {
-    cli.progress.erase();
-    if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
-    )
-      throw err;
-    cli.warn(cli.red('Error: ' + err.message || err));
+  } catch (error) {
+    errorHandler(error);
   } finally {
     cli.progress.end();
   }
@@ -259,7 +264,11 @@ async function scheduler(cmd) {
       default:
         continue;
     }
-    await runTask(task.on('data', (data) => Database.batch(data)));
+    await runTask(
+      task.on('data', (data) =>
+        Database.batch(data).catch((e) => errorHandler(e))
+      )
+    );
   }
   await Database.end();
   cli.println('Done.');
