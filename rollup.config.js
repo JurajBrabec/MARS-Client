@@ -6,7 +6,7 @@ import { terser } from 'rollup-plugin-terser';
 export default {
   input: './mars.js',
   output: {
-    file: './build/mars.min.js',
+    file: './build/mars.js',
     format: 'cjs',
     name: 'mars',
   },
