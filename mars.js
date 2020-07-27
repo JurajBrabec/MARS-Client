@@ -186,15 +186,16 @@ async function runTask(task) {
     cli.println(task.description);
     progressStart();
     await task.asBatch(2048).on('progress', onProgress).run();
-  } catch (err) {
+  } catch (error) {
     cli.progress.erase();
     if (
-      err instanceof SyntaxError ||
-      err instanceof ReferenceError ||
-      err instanceof TypeError
+      error instanceof SyntaxError ||
+      error instanceof ReferenceError ||
+      error instanceof TypeError
     )
-      throw err;
-    cli.warn(cli.red('Error: ' + err.message || err));
+      throw error;
+    const message = error.message || error;
+    cli.warn(cli.red('Error: ' + message));
   } finally {
     cli.progress.end();
   }
