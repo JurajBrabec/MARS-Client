@@ -169,7 +169,8 @@ function errorHandler(error) {
     error instanceof TypeError
   )
     throw error;
-  cli.warnln(cli.red('Error: ' + error));
+  const message = error.message || error;
+  cli.warnln(cli.red('Error: ' + message));
 }
 function onProgress(progress) {
   cli.progress.update({
