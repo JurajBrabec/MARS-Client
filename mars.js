@@ -3,8 +3,9 @@ const commander = require('commander');
 const Cron = require('croner');
 const dotenv = require('dotenv').config();
 const moment = require('moment');
-const pkg = require('./package.json');
+const Database = require('./lib/Database');
 const { NetBackup } = require('./lib/NetBackup');
+const pkg = require('./package.json');
 
 const startTime = moment();
 
@@ -151,7 +152,7 @@ async function execEsl() {
   execute(await netBackup.esl());
 }
 async function execute(task) {
-  const Database = require('./lib/Database');
+  await Database.init();
   await runTask(
     task.on('data', (data) =>
       Database.batch(data).catch((e) => errorHandler(e))
@@ -206,7 +207,6 @@ async function runTask(task) {
   }
 }
 async function scheduler(cmd) {
-  const Database = require('./lib/Database');
   for (const taskName in crons) {
     const cron = Cron(crons[taskName]);
     const inSec = Math.floor(cron.msToNext() / 1000);
@@ -265,6 +265,7 @@ async function scheduler(cmd) {
       default:
         continue;
     }
+    await Database.init();
     await runTask(
       task.on('data', (data) =>
         Database.batch(data).catch((e) => errorHandler(e))
