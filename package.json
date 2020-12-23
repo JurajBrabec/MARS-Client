@@ -13,11 +13,11 @@
   "license": "ISC",
   "dependencies": {
     "bluebird": "^3.7.2",
-    "chalk": "^4.1.0",
     "commander": "^5.1.0",
     "croner": "^1.1.23",
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
+    "chalk": "^4.1.0",
     "mariadb": "^2.4.2",
     "moment": "^2.27.0",
     "multi-ini": "^2.1.0",
