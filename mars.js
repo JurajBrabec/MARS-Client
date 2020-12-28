@@ -119,7 +119,7 @@ async function execJobs(cmd) {
   if (args) {
     execute(await netBackup.jobs(args));
   } else {
-    cli.warn(`No argument given.`);
+    cli.warnln(`No argument given.`);
   }
 }
 
@@ -131,7 +131,7 @@ async function execFiles(cmd) {
   if (args) {
     execute(await netBackup.files(args));
   } else {
-    cli.warn(`No argument given.`);
+    cli.warnln(`No argument given.`);
   }
 }
 async function execImages(cmd) {
@@ -142,7 +142,7 @@ async function execImages(cmd) {
   if (args) {
     execute(await netBackup.images(args));
   } else {
-    cli.warn(`No argument given.`);
+    cli.warnln(`No argument given.`);
   }
 }
 async function execTickets() {
