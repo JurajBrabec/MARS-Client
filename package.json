@@ -4,8 +4,8 @@
   "description": "MARS client",
   "main": "./mars.js",
   "scripts": {
-    "build": "rollup --config",
-    "esbuild": "./node_modules/.bin/esbuild mars.js --bundle --minify --platform=node --outfile=./build/mars42.js",
+    "rollup": "rollup --config",
+    "build": "esbuild mars.js --bundle --minify --platform=node --outfile=./build/mars.js",
     "start": "node ./mars.js",
     "test": "jest --coverage",
     "debug": "node --inspect-brk ./mars.js"
@@ -18,7 +18,6 @@
     "croner": "^1.1.23",
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
-    "esbuild": "^0.8.43",
     "chalk": "^4.1.0",
     "mariadb": "^2.4.2",
     "moment": "^2.27.0",
@@ -30,6 +29,7 @@
     "@rollup/plugin-commonjs": "^17.1.0",
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^11.1.1",
+    "esbuild": "^0.8.44",
     "jest": "^26.2.2",
     "rollup": "^2.23.0",
     "rollup-plugin-terser": "^7.0.2"
